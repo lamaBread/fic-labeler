@@ -1,0 +1,344 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Malgun Gothic', sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 5px;
+}
+
+.section h2 {
+    color: #555;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-left: 4px solid #007bff;
+    padding-left: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: #666;
+    font-weight: bold;
+}
+
+input[type="text"],
+input[type="file"],
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+button.secondary {
+    background: #6c757d;
+}
+
+button.secondary:hover {
+    background: #545b62;
+}
+
+button.success {
+    background: #28a745;
+}
+
+button.success:hover {
+    background: #218838;
+}
+
+.labeling-area {
+    display: none;
+}
+
+.row-info {
+    background: #e9ecef;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.field-group {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.field-group label {
+    color: #333;
+}
+
+.field-group input,
+.field-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.field-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.field-group input[readonly] {
+    background: #f8f9fa;
+    color: #666;
+}
+
+.navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.message {
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    display: none;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.show {
+    display: block;
+}
+
+.column-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.column-tag {
+    background: #007bff;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+}
+
+/* 단계별 섹션 스타일 */
+#step1Section {
+    border-left: 4px solid #17a2b8;
+}
+
+#step2Section {
+    border-left: 4px solid #ffc107;
+}
+
+#step3Section {
+    border-left: 4px solid #28a745;
+}
+
+/* 진행 중인 단계 강조 */
+#step1Section h2 {
+    border-left-color: #17a2b8;
+}
+
+#step2Section h2 {
+    border-left-color: #ffc107;
+}
+
+#step3Section h2 {
+    border-left-color: #28a745;
+}
+
+/* 열 관리 리스트 스타일 */
+.column-management-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.column-item {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    cursor: move;
+    transition: all 0.2s;
+}
+
+.column-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 5px rgba(0,123,255,0.2);
+}
+
+.column-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.column-item.drag-over {
+    border-color: #28a745;
+    border-style: dashed;
+    background: #f0fff0;
+}
+
+.drag-handle {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+    color: #999;
+    font-size: 18px;
+    cursor: grab;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.column-name {
+    flex: 1;
+    font-weight: 500;
+    color: #333;
+    user-select: none;
+}
+
+.column-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-icon {
+    padding: 5px 10px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    color: #495057;
+}
+
+.btn-icon:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.btn-icon.btn-up:hover {
+    background: #d1ecf1;
+    border-color: #17a2b8;
+    color: #17a2b8;
+}
+
+.btn-icon.btn-down:hover {
+    background: #d1ecf1;
+    border-color: #17a2b8;
+    color: #17a2b8;
+}
+
+.btn-icon.btn-delete:hover {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.btn-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-icon:disabled:hover {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+    color: #495057;
+}
+
+/* 마지막 행 경고 스타일 */
+.last-row-warning {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ffc107;
+    color: #000;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* 마지막 행 경고가 표시될 때 body에 하단 여백 추가 */
+body.show-last-row-warning {
+    padding-bottom: 60px;
+}
+
