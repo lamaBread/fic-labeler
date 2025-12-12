@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>라벨링 작업 - 소설 시간흐름 라벨링 시스템</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container labeling-container">
+        <header>
+            <div class="header-content">
+                <a href="dashboard.html" class="back-link">← 대시보드로 돌아가기</a>
+                <div class="header-info">
+                    <span id="currentDocInfo"></span>
+                    <span id="progressInfo"></span>
+                </div>
+            </div>
+        </header>
+
+        <main class="labeling-main">
+            <!-- 완료 메시지 (숨김 상태) -->
+            <div id="completionMessage" class="completion-message" style="display: none;">
+                <h2>🎉 모든 라벨링이 완료되었습니다!</h2>
+                <p>수고하셨습니다. 대시보드에서 진행 상황을 확인할 수 있습니다.</p>
+                <a href="dashboard.html" class="btn btn-primary">대시보드로 이동</a>
+            </div>
+
+            <!-- 라벨링 인터페이스 -->
+            <div id="labelingInterface">
+                <!-- 메타데이터 표시 -->
+                <div class="metadata-panel">
+                    <div class="meta-item">
+                        <span class="meta-label">작품</span>
+                        <span id="metaTitle" class="meta-value"></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">작가</span>
+                        <span id="metaAuthor" class="meta-value"></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">문단 번호</span>
+                        <span id="metaSegmentIdx" class="meta-value"></span>
+                    </div>
+                </div>
+
+                <!-- 텍스트 표시 영역 -->
+                <div class="text-panel">
+                    <h3>📜 텍스트</h3>
+                    <div id="segmentText" class="segment-text">
+                        <p class="loading">로딩 중...</p>
+                    </div>
+                    <div class="text-stats">
+                        <span>글자 수: <strong id="charCount">-</strong></span>
+                        <span>단어 수: <strong id="wordCount">-</strong></span>
+                    </div>
+                </div>
+
+                <!-- 라벨링 입력 폼 -->
+                <div class="labeling-form-panel">
+                    <form id="labelingForm">
+                        <input type="hidden" id="docKey" name="doc_key">
+                        <input type="hidden" id="segmentIdx" name="segment_idx">
+                        
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="narratedtime">
+                                    narratedtime (필수)
+                                    <span class="tooltip" data-tip="이 문단에서 서술된 시간의 양(분 단위). 예: 1시간 = 60">?</span>
+                                </label>
+                                <input type="number" id="narratedtime" name="narratedtime" 
+                                       step="0.1" min="0" required placeholder="분 단위로 입력">
+                            </div>
+                        </div>
+
+                        <div class="form-row two-columns">
+                            <div class="form-group">
+                                <label for="ellipsistime">
+                                    ellipsistime (선택)
+                                    <span class="tooltip" data-tip="생략된 시간(분 단위). '며칠 후', '몇 년이 지나' 등">?</span>
+                                </label>
+                                <input type="number" id="ellipsistime" name="ellipsistime" 
+                                       step="0.1" min="0" value="0" placeholder="분 단위">
+                            </div>
+                            <div class="form-group">
+                                <label for="ellipsisphrase">생략 표현</label>
+                                <input type="text" id="ellipsisphrase" name="ellipsisphrase" 
+                                       placeholder="예: '며칠 후'">
+                            </div>
+                        </div>
+
+                        <div class="form-row two-columns">
+                            <div class="form-group">
+                                <label for="subjectivetime">
+                                    subjectivetime (선택)
+                                    <span class="tooltip" data-tip="주관적으로 느껴지는 시간(분 단위). 회상, 꿈 등">?</span>
+                                </label>
+                                <input type="number" id="subjectivetime" name="subjectivetime" 
+                                       step="0.1" min="0" value="0" placeholder="분 단위">
+                            </div>
+                            <div class="form-group">
+                                <label for="subjectivephrase">주관적 시간 표현</label>
+                                <input type="text" id="subjectivephrase" name="subjectivephrase" 
+                                       placeholder="예: '그 시절을 떠올리며'">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" id="prevBtn" class="btn btn-secondary">
+                                ← 이전 문장
+                            </button>
+                            <button type="submit" id="nextBtn" class="btn btn-primary">
+                                저장 & 다음 문장 →
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 네비게이션 -->
+                <div class="navigation-panel">
+                    <h4>문장 네비게이션</h4>
+                    <div id="segmentNav" class="segment-nav">
+                        <!-- 동적으로 생성 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        let currentDocKey = null;
+        let currentSegmentIdx = 0;
+        let documentData = null;
+        let allSegments = [];
+
+        // 페이지 초기화
+        (async function init() {
+            const key = localStorage.getItem('labeler_key');
+            if (!key) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 세션 확인
+            await api.login(key);
+
+            // URL에서 문서 키 확인
+            const urlParams = new URLSearchParams(window.location.search);
+            const docFromUrl = urlParams.get('doc');
+            
+            if (docFromUrl) {
+                currentDocKey = decodeURIComponent(docFromUrl);
+                await loadDocument(currentDocKey);
+            } else {
+                await loadNextUnlabeled();
+            }
+        })();
+
+        // 다음 미라벨링 문장 로드
+        async function loadNextUnlabeled() {
+            const response = await api.getNextSegment();
+            
+            if (response.success) {
+                if (response.data === null) {
+                    showCompletion();
+                    return;
+                }
+                
+                currentDocKey = response.data.doc_key;
+                await loadDocument(currentDocKey);
+                
+                // 미라벨링된 첫 문장으로 이동
+                const segmentIdx = response.data.segment_idx;
+                navigateToSegment(segmentIdx);
+            }
+        }
+
+        // 문서 로드
+        async function loadDocument(docKey) {
+            const response = await api.getSegments(docKey);
+            
+            if (response.success) {
+                documentData = response.data;
+                allSegments = documentData.segments || [];
+                
+                // 메타데이터 표시
+                document.getElementById('metaTitle').textContent = 
+                    documentData.metadata?.title || docKey;
+                document.getElementById('metaAuthor').textContent = 
+                    documentData.metadata?.author || '-';
+                document.getElementById('currentDocInfo').textContent = 
+                    `${documentData.metadata?.docid || ''} - ${documentData.metadata?.title || ''}`;
+                
+                // 네비게이션 생성
+                createNavigation();
+                
+                // 첫 번째 미라벨링 문장 찾기
+                let firstUnlabeled = 0;
+                for (let i = 0; i < allSegments.length; i++) {
+                    if (allSegments[i].narratedtime === null) {
+                        firstUnlabeled = i;
+                        break;
+                    }
+                }
+                
+                navigateToSegment(firstUnlabeled);
+            }
+        }
+
+        // 네비게이션 생성
+        function createNavigation() {
+            const navEl = document.getElementById('segmentNav');
+            navEl.innerHTML = '';
+            
+            allSegments.forEach((seg, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'nav-btn';
+                btn.textContent = idx + 1;
+                btn.title = `문단 ${idx + 1} (원본 idx: ${seg.idx})`;
+                
+                if (seg.narratedtime !== null) {
+                    btn.classList.add('completed');
+                }
+                
+                btn.addEventListener('click', () => navigateToSegment(idx));
+                navEl.appendChild(btn);
+            });
+        }
+
+        // 특정 문장으로 이동
+        function navigateToSegment(idx) {
+            if (idx < 0 || idx >= allSegments.length) return;
+            
+            currentSegmentIdx = idx;
+            const segment = allSegments[idx];
+            
+            // 텍스트 표시
+            document.getElementById('segmentText').innerHTML = 
+                `<p>${escapeHtml(segment.text).replace(/\n/g, '<br>')}</p>`;
+            
+            // 통계 표시
+            document.getElementById('charCount').textContent = segment.char_count || segment.text.length;
+            document.getElementById('wordCount').textContent = segment.word_count || '-';
+            document.getElementById('metaSegmentIdx').textContent = 
+                `${idx + 1} / ${allSegments.length} (원본 idx: ${segment.idx})`;
+            
+            // 진행 상황 표시
+            const completed = allSegments.filter(s => s.narratedtime !== null).length;
+            document.getElementById('progressInfo').textContent = 
+                `진행: ${completed}/${allSegments.length}`;
+            
+            // 폼 값 설정
+            document.getElementById('docKey').value = currentDocKey;
+            document.getElementById('segmentIdx').value = idx;
+            document.getElementById('narratedtime').value = segment.narratedtime ?? '';
+            document.getElementById('ellipsistime').value = segment.ellipsistime ?? 0;
+            document.getElementById('subjectivetime').value = segment.subjectivetime ?? 0;
+            document.getElementById('ellipsisphrase').value = segment.ellipsisphrase ?? '';
+            document.getElementById('subjectivephrase').value = segment.subjectivephrase ?? '';
+            
+            // 네비게이션 버튼 상태 업데이트
+            document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+                btn.classList.remove('current');
+                if (i === idx) btn.classList.add('current');
+            });
+            
+            // 이전/다음 버튼 상태
+            document.getElementById('prevBtn').disabled = idx === 0;
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 완료 메시지 표시
+        function showCompletion() {
+            document.getElementById('labelingInterface').style.display = 'none';
+            document.getElementById('completionMessage').style.display = 'block';
+        }
+
+        // 폼 제출 (저장 & 다음)
+        document.getElementById('labelingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            // 필수 값 확인
+            if (!formData.get('narratedtime')) {
+                alert('narratedtime은 필수 입력 항목입니다.');
+                return;
+            }
+            
+            try {
+                const response = await api.saveLabel(formData);
+                
+                if (response.success) {
+                    // 현재 문장 완료 표시
+                    allSegments[currentSegmentIdx].narratedtime = parseFloat(formData.get('narratedtime'));
+                    
+                    // 네비게이션 업데이트
+                    const navBtns = document.querySelectorAll('.nav-btn');
+                    if (navBtns[currentSegmentIdx]) {
+                        navBtns[currentSegmentIdx].classList.add('completed');
+                    }
+                    
+                    // 다음 문장으로 이동
+                    if (currentSegmentIdx < allSegments.length - 1) {
+                        navigateToSegment(currentSegmentIdx + 1);
+                    } else {
+                        // 현재 문서의 모든 문장 완료
+                        // 다음 미라벨링 문장 찾기
+                        const nextUnlabeled = allSegments.findIndex(s => s.narratedtime === null);
+                        
+                        if (nextUnlabeled === -1) {
+                            alert('이 작품의 모든 라벨링이 완료되었습니다!');
+                            window.location.href = 'dashboard.html';
+                        } else {
+                            navigateToSegment(nextUnlabeled);
+                        }
+                    }
+                } else {
+                    alert(response.message || '저장에 실패했습니다.');
+                }
+            } catch (error) {
+                alert('저장 중 오류가 발생했습니다.');
+                console.error(error);
+            }
+        });
+
+        // 이전 버튼
+        document.getElementById('prevBtn').addEventListener('click', function() {
+            if (currentSegmentIdx > 0) {
+                navigateToSegment(currentSegmentIdx - 1);
+            }
+        });
+
+        // 키보드 단축키
+        document.addEventListener('keydown', function(e) {
+            // Alt + 좌/우 화살표로 이동
+            if (e.altKey && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (currentSegmentIdx > 0) {
+                    navigateToSegment(currentSegmentIdx - 1);
+                }
+            } else if (e.altKey && e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (currentSegmentIdx < allSegments.length - 1) {
+                    navigateToSegment(currentSegmentIdx + 1);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

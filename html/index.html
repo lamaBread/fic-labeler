@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소설 시간흐름 라벨링 시스템</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 소설 시간흐름 라벨링 시스템</h1>
+            <p class="subtitle">Korean Fiction Temporal Annotation System</p>
+        </header>
+
+        <main class="login-container">
+            <div class="login-box">
+                <h2>라벨러 로그인</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="labelerKey">개인 키 입력</label>
+                        <input type="password" id="labelerKey" name="key" placeholder="발급받은 키를 입력하세요" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">로그인</button>
+                </form>
+                <p id="loginError" class="error-message"></p>
+            </div>
+
+            <div class="divider">
+                <span>또는</span>
+            </div>
+
+            <div class="admin-link">
+                <a href="admin.html" class="btn btn-secondary">관리자 페이지</a>
+            </div>
+        </main>
+
+        <footer>
+            <p>Based on Ted Underwood's "Why Literary Time is Measured in Minutes"</p>
+        </footer>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const key = document.getElementById('labelerKey').value;
+            const errorEl = document.getElementById('loginError');
+            
+            try {
+                const response = await api.login(key);
+                
+                if (response.success) {
+                    localStorage.setItem('labeler_key', key);
+                    localStorage.setItem('labeler_nickname', response.data.nickname);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    errorEl.textContent = response.message;
+                }
+            } catch (error) {
+                errorEl.textContent = '로그인 중 오류가 발생했습니다.';
+            }
+        });
+
+        // 이미 로그인되어 있는지 확인
+        (async function() {
+            const key = localStorage.getItem('labeler_key');
+            if (key) {
+                try {
+                    const response = await api.checkSession();
+                    if (response.success && !response.data.is_admin) {
+                        window.location.href = 'dashboard.html';
+                    }
+                } catch (e) {
+                    localStorage.removeItem('labeler_key');
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

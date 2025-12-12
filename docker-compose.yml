@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  labeler-web:
+    image: php:8.2-apache
+    container_name: labeler-web
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./html:/var/www/html
+      - ./data:/var/www/html/data
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Asia/Seoul}
+      - ADMIN_KEY=${ADMIN_KEY}
+    command: >
+      bash -c "
+        docker-php-ext-install zip &&
+        a2enmod rewrite &&
+        chown -R www-data:www-data /var/www/html/data &&
+        chmod -R 755 /var/www/html/data &&
+        apache2-foreground
+      "
+    labels:
+      - "traefik.enable=true"
+      # 리버스 프록시용 라벨 (Traefik 사용 시)
+      # - "traefik.http.routers.labeler.rule=Host(`labeler.yourdomain.com`)"
+      # - "traefik.http.routers.labeler.entrypoints=websecure"
+      # - "traefik.http.routers.labeler.tls.certresolver=letsencrypt"
+    networks:
+      - labeler-network
+
+networks:
+  labeler-network:
+    driver: bridge

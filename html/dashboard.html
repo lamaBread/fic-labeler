@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 - 소설 시간흐름 라벨링 시스템</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>📚 라벨링 대시보드</h1>
+                <div class="user-info">
+                    <span id="userNickname"></span>
+                    <button id="logoutBtn" class="btn btn-small">로그아웃</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- 전체 진행 상황 -->
+            <section class="progress-section">
+                <h2>📊 전체 진행 상황</h2>
+                <div class="overall-progress">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="overallProgressBar"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span id="completedCount">0</span> / <span id="totalCount">0</span> 문장
+                        (<span id="progressPercent">0</span>%)
+                    </div>
+                </div>
+                <button id="startLabelingBtn" class="btn btn-primary btn-large">
+                    🏷️ 라벨링 시작하기
+                </button>
+            </section>
+
+            <!-- 작품별 진행 상황 -->
+            <section class="documents-section">
+                <h2>📖 작품별 진행 상황</h2>
+                <div id="documentsList" class="documents-list">
+                    <p class="loading">로딩 중...</p>
+                </div>
+            </section>
+
+            <!-- 라벨링 가이드 -->
+            <section class="guide-section">
+                <h2>📝 라벨링 가이드</h2>
+                <div class="guide-content">
+                    <div class="guide-item">
+                        <h3>narratedtime (필수)</h3>
+                        <p>텍스트 내에서 서술된 시간의 양(분 단위)입니다. 예: 한 문단에서 1시간이 흘렀다면 60을 입력.</p>
+                    </div>
+                    <div class="guide-item">
+                        <h3>ellipsistime (선택)</h3>
+                        <p>생략된 시간(분 단위)입니다. "며칠 후", "몇 년이 지나" 등으로 생략된 시간.</p>
+                    </div>
+                    <div class="guide-item">
+                        <h3>subjectivetime (선택)</h3>
+                        <p>주관적으로 느껴지는 시간(분 단위)입니다. 회상, 꿈 등 실제 시간과 다르게 느껴지는 경우.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Based on Ted Underwood's "Why Literary Time is Measured in Minutes"</p>
+        </footer>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        // 페이지 로드 시 인증 확인
+        (async function init() {
+            const key = localStorage.getItem('labeler_key');
+            if (!key) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 세션 확인을 위해 다시 로그인
+            const loginResponse = await api.login(key);
+            if (!loginResponse.success) {
+                localStorage.removeItem('labeler_key');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('userNickname').textContent = 
+                localStorage.getItem('labeler_nickname') || '라벨러';
+
+            await loadProgress();
+        })();
+
+        // 진행 상황 로드
+        async function loadProgress() {
+            try {
+                const response = await api.getProgress();
+                
+                if (response.success) {
+                    const { overall, documents } = response.data;
+                    
+                    // 전체 진행률 업데이트
+                    document.getElementById('completedCount').textContent = overall.completed;
+                    document.getElementById('totalCount').textContent = overall.total;
+                    document.getElementById('progressPercent').textContent = overall.percentage;
+                    document.getElementById('overallProgressBar').style.width = overall.percentage + '%';
+                    
+                    // 작품별 목록 생성
+                    const listEl = document.getElementById('documentsList');
+                    listEl.innerHTML = '';
+                    
+                    if (Object.keys(documents).length === 0) {
+                        listEl.innerHTML = '<p class="no-data">할당된 작품이 없습니다.</p>';
+                        return;
+                    }
+                    
+                    for (const [docKey, doc] of Object.entries(documents)) {
+                        const card = document.createElement('div');
+                        card.className = 'document-card';
+                        if (doc.percentage === 100) {
+                            card.classList.add('completed');
+                        }
+                        
+                        card.innerHTML = `
+                            <div class="doc-info">
+                                <span class="doc-id">${doc.docid}</span>
+                                <h3 class="doc-title">${doc.title}</h3>
+                                <span class="doc-author">${doc.author}</span>
+                            </div>
+                            <div class="doc-progress">
+                                <div class="mini-progress-bar">
+                                    <div class="mini-progress-fill" style="width: ${doc.percentage}%"></div>
+                                </div>
+                                <span class="doc-stats">${doc.completed}/${doc.total} (${doc.percentage}%)</span>
+                            </div>
+                            <button class="btn btn-small" onclick="startLabeling('${docKey}')">
+                                ${doc.percentage === 100 ? '수정하기' : '라벨링'}
+                            </button>
+                        `;
+                        
+                        listEl.appendChild(card);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading progress:', error);
+            }
+        }
+
+        // 라벨링 시작
+        document.getElementById('startLabelingBtn').addEventListener('click', function() {
+            window.location.href = 'labeling.html';
+        });
+
+        // 특정 문서 라벨링 시작
+        function startLabeling(docKey) {
+            sessionStorage.setItem('current_doc_key', docKey);
+            window.location.href = 'labeling.html?doc=' + encodeURIComponent(docKey);
+        }
+
+        // 로그아웃
+        document.getElementById('logoutBtn').addEventListener('click', async function() {
+            await api.logout();
+            localStorage.removeItem('labeler_key');
+            localStorage.removeItem('labeler_nickname');
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>

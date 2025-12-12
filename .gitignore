@@ -1,0 +1,23 @@
+# 이 파일들은 Git에서 제외합니다
+# 실제 배포 시 data 폴더의 내용은 볼륨으로 관리됩니다
+
+# 환경변수 파일 (민감 정보 포함)
+.env
+
+# 데이터 파일
+data/master_passages.json
+data/users.json
+data/labelers/*.json
+
+# 민감한 설정 (관리자 키가 포함된 config.php는 별도 관리 권장)
+# html/config.php
+
+# Docker 관련
+.docker/
+
+# 로그
+*.log
+
+# OS 파일
+.DS_Store
+Thumbs.db

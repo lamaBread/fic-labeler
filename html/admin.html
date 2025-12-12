@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 - 소설 시간흐름 라벨링 시스템</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🔧 관리자 페이지</h1>
+                <div class="user-info" id="adminControls" style="display: none;">
+                    <span>관리자</span>
+                    <button id="logoutBtn" class="btn btn-small">로그아웃</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- 로그인 폼 -->
+            <section id="adminLoginSection" class="admin-login-section">
+                <div class="login-box">
+                    <h2>관리자 로그인</h2>
+                    <form id="adminLoginForm">
+                        <div class="form-group">
+                            <label for="adminKey">관리자 키</label>
+                            <input type="password" id="adminKey" name="key" placeholder="관리자 키를 입력하세요" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">로그인</button>
+                    </form>
+                    <p id="adminLoginError" class="error-message"></p>
+                    <a href="index.html" class="btn btn-secondary" style="margin-top: 1rem;">← 라벨러 로그인으로</a>
+                </div>
+            </section>
+
+            <!-- 관리자 대시보드 -->
+            <div id="adminDashboard" style="display: none;">
+                <!-- 라벨러 관리 -->
+                <section class="admin-section">
+                    <h2>👥 라벨러 관리</h2>
+                    
+                    <div class="add-labeler-form">
+                        <h3>새 라벨러 추가</h3>
+                        <form id="addLabelerForm" class="inline-form">
+                            <input type="text" id="newLabelerNickname" placeholder="라벨러 별명" required>
+                            <button type="submit" class="btn btn-primary">추가</button>
+                        </form>
+                    </div>
+                    
+                    <div class="labelers-list">
+                        <h3>라벨러 목록</h3>
+                        <table id="labelersTable">
+                            <thead>
+                                <tr>
+                                    <th>별명</th>
+                                    <th>개인 키</th>
+                                    <th>진행률</th>
+                                    <th>생성일</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody id="labelersTableBody">
+                                <tr><td colspan="5" class="loading">로딩 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 작품 관리 -->
+                <section class="admin-section">
+                    <h2>📚 작품 관리</h2>
+                    
+                    <div class="import-json-form">
+                        <h3>새 작품 추가 (JSON 파일)</h3>
+                        <form id="importJsonForm" class="inline-form" enctype="multipart/form-data">
+                            <input type="file" id="jsonFile" name="json_file" accept=".json" required>
+                            <button type="submit" class="btn btn-primary">업로드 & 병합</button>
+                        </form>
+                        <p class="help-text">
+                            sampled_passages.json 형식의 파일을 업로드하세요. 
+                            기존에 없는 R_XXX 작품만 추가됩니다.
+                        </p>
+                    </div>
+                    
+                    <div id="importResult" class="import-result" style="display: none;"></div>
+                </section>
+
+                <!-- 전체 진행 현황 -->
+                <section class="admin-section">
+                    <h2>📊 전체 진행 현황</h2>
+                    <div id="allProgressContainer">
+                        <p class="loading">로딩 중...</p>
+                    </div>
+                </section>
+
+                <!-- 결과 내보내기 -->
+                <section class="admin-section">
+                    <h2>📤 결과 내보내기</h2>
+                    <p class="help-text" style="margin-bottom: 1rem;">
+                        모든 라벨러의 작업 데이터를 ZIP 파일로 다운로드합니다.<br>
+                        (labelers 폴더 + users.json + master_passages.json)
+                    </p>
+                    <button id="exportResultsBtn" class="btn btn-primary">
+                        📦 라벨링 결과 ZIP으로 내보내기
+                    </button>
+                </section>
+            </div>
+        </main>
+
+        <footer>
+            <p>Based on Ted Underwood's "Why Literary Time is Measured in Minutes"</p>
+        </footer>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        // 관리자 로그인 폼
+        document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const key = document.getElementById('adminKey').value;
+            const errorEl = document.getElementById('adminLoginError');
+            
+            try {
+                const response = await api.adminLogin(key);
+                
+                if (response.success) {
+                    sessionStorage.setItem('is_admin', 'true');
+                    showAdminDashboard();
+                } else {
+                    errorEl.textContent = response.message;
+                }
+            } catch (error) {
+                errorEl.textContent = '로그인 중 오류가 발생했습니다.';
+            }
+        });
+
+        // 관리자 대시보드 표시
+        async function showAdminDashboard() {
+            document.getElementById('adminLoginSection').style.display = 'none';
+            document.getElementById('adminDashboard').style.display = 'block';
+            document.getElementById('adminControls').style.display = 'flex';
+            
+            await loadLabelers();
+            await loadAllProgress();
+        }
+
+        // 라벨러 목록 로드
+        async function loadLabelers() {
+            const response = await api.getLabelers();
+            const tbody = document.getElementById('labelersTableBody');
+            
+            if (response.success) {
+                const labelers = response.data;
+                
+                if (labelers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="no-data">등록된 라벨러가 없습니다.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = labelers.map(labeler => `
+                    <tr>
+                        <td><strong>${escapeHtml(labeler.nickname)}</strong></td>
+                        <td>
+                            <code class="key-code">${labeler.key}</code>
+                            <button class="btn btn-tiny" onclick="copyToClipboard('${labeler.key}')">복사</button>
+                        </td>
+                        <td>
+                            <div class="mini-progress-bar">
+                                <div class="mini-progress-fill" style="width: ${labeler.progress.percentage}%"></div>
+                            </div>
+                            <span>${labeler.progress.completed}/${labeler.progress.total} (${labeler.progress.percentage}%)</span>
+                        </td>
+                        <td>${labeler.created_at || '-'}</td>
+                        <td>
+                            <button class="btn btn-small btn-danger" onclick="deleteLabeler('${labeler.id}', '${escapeHtml(labeler.nickname)}')">
+                                삭제
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = `<tr><td colspan="5" class="error">${response.message}</td></tr>`;
+            }
+        }
+
+        // 전체 진행 현황 로드
+        async function loadAllProgress() {
+            const container = document.getElementById('allProgressContainer');
+            const response = await api.getAllProgress();
+            
+            if (response.success) {
+                const data = response.data;
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="no-data">등록된 라벨러가 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="progress-grid">
+                        ${data.map(item => `
+                            <div class="progress-card">
+                                <h4>${escapeHtml(item.nickname)}</h4>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" style="width: ${item.progress.percentage}%"></div>
+                                </div>
+                                <p>${item.progress.completed} / ${item.progress.total} (${item.progress.percentage}%)</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        // 라벨러 추가
+        document.getElementById('addLabelerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const nickname = document.getElementById('newLabelerNickname').value;
+            
+            const response = await api.addLabeler(nickname);
+            
+            if (response.success) {
+                alert(`라벨러가 추가되었습니다.\n\n별명: ${response.data.nickname}\n개인 키: ${response.data.key}\n\n이 키를 라벨러에게 전달해주세요.`);
+                document.getElementById('newLabelerNickname').value = '';
+                await loadLabelers();
+                await loadAllProgress();
+            } else {
+                alert(response.message);
+            }
+        });
+
+        // 라벨러 삭제
+        async function deleteLabeler(id, nickname) {
+            if (!confirm(`정말로 "${nickname}" 라벨러를 삭제하시겠습니까?\n\n이 라벨러의 모든 라벨링 데이터가 삭제됩니다.`)) {
+                return;
+            }
+            
+            const response = await api.deleteLabeler(id);
+            
+            if (response.success) {
+                alert('라벨러가 삭제되었습니다.');
+                await loadLabelers();
+                await loadAllProgress();
+            } else {
+                alert(response.message);
+            }
+        }
+
+        // JSON 파일 업로드
+        document.getElementById('importJsonForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('jsonFile');
+            const resultEl = document.getElementById('importResult');
+            
+            if (!fileInput.files[0]) {
+                alert('파일을 선택해주세요.');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('json_file', fileInput.files[0]);
+            formData.append('action', 'import_json');
+            
+            try {
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+                
+                const result = await response.json();
+                
+                resultEl.style.display = 'block';
+                
+                if (result.success) {
+                    resultEl.className = 'import-result success';
+                    resultEl.textContent = result.message;
+                    fileInput.value = '';
+                    await loadLabelers();
+                } else {
+                    resultEl.className = 'import-result error';
+                    resultEl.textContent = result.message;
+                }
+            } catch (error) {
+                resultEl.className = 'import-result error';
+                resultEl.textContent = '업로드 중 오류가 발생했습니다.';
+            }
+        });
+
+        // 결과 내보내기 (ZIP 다운로드)
+        document.getElementById('exportResultsBtn').addEventListener('click', function() {
+            // 직접 다운로드 링크로 이동 (ZIP 파일 반환)
+            window.location.href = 'api.php?action=export_results';
+        });
+
+        // 클립보드 복사
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('클립보드에 복사되었습니다.');
+            }).catch(() => {
+                prompt('키를 복사하세요:', text);
+            });
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 로그아웃
+        document.getElementById('logoutBtn').addEventListener('click', async function() {
+            await api.logout();
+            sessionStorage.removeItem('is_admin');
+            location.reload();
+        });
+
+        // 세션 확인
+        (async function() {
+            const isAdmin = sessionStorage.getItem('is_admin');
+            if (isAdmin === 'true') {
+                const response = await api.checkSession();
+                if (response.success && response.data.is_admin) {
+                    showAdminDashboard();
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
