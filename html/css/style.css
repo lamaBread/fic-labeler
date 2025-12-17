@@ -290,7 +290,8 @@ header .subtitle {
 /* ========== Dashboard ========== */
 .progress-section,
 .documents-section,
-.guide-section {
+.guide-section,
+.announcements-section {
     background: var(--card-bg);
     padding: 2rem;
     border-radius: var(--radius-lg);
@@ -300,7 +301,8 @@ header .subtitle {
 
 .progress-section h2,
 .documents-section h2,
-.guide-section h2 {
+.guide-section h2,
+.announcements-section h2 {
     margin-bottom: 1.5rem;
     padding-bottom: 0.75rem;
     border-bottom: 2px solid var(--border-color);
@@ -719,6 +721,127 @@ footer {
     padding: 2rem;
     color: var(--text-muted);
     font-size: 0.875rem;
+}
+
+/* ========== Announcements (Dashboard) ========== */
+.announcements-container {
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    padding: 0;
+}
+
+.announcement-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-color);
+}
+
+.announcement-item:first-child {
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.announcement-item:last-child {
+    border-bottom: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.announcement-item:only-child {
+    border-radius: var(--radius);
+}
+
+.announcement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.announcement-title {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.announcement-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.announcement-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+/* ========== Announcements (Admin) ========== */
+.add-announcement-form {
+    background: var(--bg-color);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+}
+
+.add-announcement-form h3 {
+    margin-bottom: 1rem;
+}
+
+.add-announcement-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.add-announcement-form input[type="text"],
+.add-announcement-form textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.add-announcement-form textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.announcements-list-admin h3 {
+    margin-bottom: 1rem;
+}
+
+.announcements-container-admin {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 0.5rem;
+}
+
+.announcement-item-admin {
+    background: var(--bg-color);
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+}
+
+.announcement-item-admin:last-child {
+    margin-bottom: 0;
+}
+
+.announcement-header-admin {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.announcement-content-admin {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: var(--card-bg);
+    border-radius: var(--radius);
 }
 
 /* ========== Responsive ========== */

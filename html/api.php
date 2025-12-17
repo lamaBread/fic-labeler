@@ -87,6 +87,21 @@ switch ($action) {
         handleExportResults();
         break;
     
+    // ========================
+    // 공지사항 관련
+    // ========================
+    case 'get_announcements':
+        handleGetAnnouncements();
+        break;
+    
+    case 'add_announcement':
+        handleAddAnnouncement();
+        break;
+    
+    case 'delete_announcement':
+        handleDeleteAnnouncement();
+        break;
+    
     default:
         jsonResponse(false, null, '알 수 없는 액션입니다.');
 }
@@ -595,5 +610,78 @@ function handleExportResults() {
         echo json_encode($exportData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         exit;
     }
+}
+
+// ========================
+// 공지사항 핸들러
+// ========================
+
+function handleGetAnnouncements() {
+    $announcements = loadAnnouncements();
+    // 최신순으로 정렬 (id가 큰 것이 최신)
+    usort($announcements, function($a, $b) {
+        return $b['id'] - $a['id'];
+    });
+    jsonResponse(true, $announcements);
+}
+
+function handleAddAnnouncement() {
+    if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
+        jsonResponse(false, null, '관리자 권한이 필요합니다.');
+    }
+    
+    $title = $_POST['title'] ?? '';
+    $content = $_POST['content'] ?? '';
+    
+    if (empty($title)) {
+        jsonResponse(false, null, '제목을 입력해주세요.');
+    }
+    
+    if (empty($content)) {
+        jsonResponse(false, null, '내용을 입력해주세요.');
+    }
+    
+    $announcements = loadAnnouncements();
+    
+    // 새 공지사항 ID 생성 (가장 큰 ID + 1)
+    $maxId = 0;
+    foreach ($announcements as $ann) {
+        if ($ann['id'] > $maxId) {
+            $maxId = $ann['id'];
+        }
+    }
+    
+    $newAnnouncement = [
+        'id' => $maxId + 1,
+        'title' => $title,
+        'content' => $content,
+        'created_at' => date('Y-m-d H:i:s')
+    ];
+    
+    $announcements[] = $newAnnouncement;
+    saveAnnouncements($announcements);
+    
+    jsonResponse(true, $newAnnouncement, '공지사항이 등록되었습니다.');
+}
+
+function handleDeleteAnnouncement() {
+    if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
+        jsonResponse(false, null, '관리자 권한이 필요합니다.');
+    }
+    
+    $announcementId = $_POST['announcement_id'] ?? '';
+    
+    if (empty($announcementId)) {
+        jsonResponse(false, null, '공지사항 ID가 필요합니다.');
+    }
+    
+    $announcements = loadAnnouncements();
+    $announcements = array_filter($announcements, function($ann) use ($announcementId) {
+        return $ann['id'] != $announcementId;
+    });
+    $announcements = array_values($announcements);
+    saveAnnouncements($announcements);
+    
+    jsonResponse(true, null, '공지사항이 삭제되었습니다.');
 }
 ?>

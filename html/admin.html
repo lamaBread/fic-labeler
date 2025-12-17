@@ -106,6 +106,31 @@
                         📦 라벨링 결과 ZIP으로 내보내기
                     </button>
                 </section>
+
+                <!-- 공지사항 관리 -->
+                <section class="admin-section">
+                    <h2>📢 공지사항 관리</h2>
+                    
+                    <div class="add-announcement-form">
+                        <h3>새 공지사항 작성</h3>
+                        <form id="addAnnouncementForm">
+                            <div class="form-group">
+                                <input type="text" id="announcementTitle" placeholder="공지사항 제목" required>
+                            </div>
+                            <div class="form-group">
+                                <textarea id="announcementContent" placeholder="공지사항 내용을 입력하세요..." rows="4" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">공지사항 등록</button>
+                        </form>
+                    </div>
+                    
+                    <div class="announcements-list-admin">
+                        <h3>공지사항 목록</h3>
+                        <div id="adminAnnouncementsList" class="announcements-container-admin">
+                            <p class="loading">로딩 중...</p>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
 
@@ -145,6 +170,7 @@
             
             await loadLabelers();
             await loadAllProgress();
+            await loadAdminAnnouncements();
         }
 
         // 라벨러 목록 로드
@@ -297,6 +323,71 @@
             // 직접 다운로드 링크로 이동 (ZIP 파일 반환)
             window.location.href = 'api.php?action=export_results';
         });
+
+        // 공지사항 목록 로드 (관리자)
+        async function loadAdminAnnouncements() {
+            const response = await api.getAnnouncements();
+            const container = document.getElementById('adminAnnouncementsList');
+            
+            if (response.success) {
+                const announcements = response.data;
+                
+                if (announcements.length === 0) {
+                    container.innerHTML = '<p class="no-data">등록된 공지사항이 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = announcements.map(ann => `
+                    <div class="announcement-item-admin">
+                        <div class="announcement-header-admin">
+                            <strong>${escapeHtml(ann.title)}</strong>
+                            <span class="announcement-date">${ann.created_at}</span>
+                        </div>
+                        <div class="announcement-content-admin">${escapeHtml(ann.content).replace(/\n/g, '<br>')}</div>
+                        <button class="btn btn-small btn-danger" onclick="deleteAnnouncement(${ann.id}, '${escapeHtml(ann.title).replace(/'/g, "\\'")}')">
+                            삭제
+                        </button>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `<p class="error">${response.message}</p>`;
+            }
+        }
+
+        // 공지사항 추가
+        document.getElementById('addAnnouncementForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('announcementTitle').value;
+            const content = document.getElementById('announcementContent').value;
+            
+            const response = await api.addAnnouncement(title, content);
+            
+            if (response.success) {
+                alert('공지사항이 등록되었습니다.');
+                document.getElementById('announcementTitle').value = '';
+                document.getElementById('announcementContent').value = '';
+                await loadAdminAnnouncements();
+            } else {
+                alert(response.message);
+            }
+        });
+
+        // 공지사항 삭제
+        async function deleteAnnouncement(id, title) {
+            if (!confirm(`"${title}" 공지사항을 삭제하시겠습니까?`)) {
+                return;
+            }
+            
+            const response = await api.deleteAnnouncement(id);
+            
+            if (response.success) {
+                alert('공지사항이 삭제되었습니다.');
+                await loadAdminAnnouncements();
+            } else {
+                alert(response.message);
+            }
+        }
 
         // 클립보드 복사
         function copyToClipboard(text) {

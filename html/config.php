@@ -17,6 +17,7 @@ define('DATA_PATH', BASE_PATH . '/data');
 define('LABELERS_PATH', DATA_PATH . '/labelers');
 define('MASTER_JSON', DATA_PATH . '/master_passages.json');
 define('USERS_JSON', DATA_PATH . '/users.json');
+define('ANNOUNCEMENTS_JSON', DATA_PATH . '/announcements.json');
 
 // ============================================
 // 관리자 키 - 환경변수에서 로드
@@ -269,5 +270,27 @@ function calculateProgress($labelerData) {
         'completed' => $completedSegments,
         'percentage' => $totalSegments > 0 ? round(($completedSegments / $totalSegments) * 100, 1) : 0
     ];
+}
+
+/**
+ * 공지사항 로드
+ */
+function loadAnnouncements() {
+    if (!file_exists(ANNOUNCEMENTS_JSON)) {
+        return [];
+    }
+    $content = file_get_contents(ANNOUNCEMENTS_JSON);
+    return json_decode($content, true) ?: [];
+}
+
+/**
+ * 공지사항 저장 (파일 잠금 사용)
+ */
+function saveAnnouncements($announcements) {
+    $dir = dirname(ANNOUNCEMENTS_JSON);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+    file_put_contents(ANNOUNCEMENTS_JSON, json_encode($announcements, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
 }
 ?>

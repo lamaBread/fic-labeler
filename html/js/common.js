@@ -162,5 +162,45 @@ const api = {
         });
         
         return response.json();
+    },
+    
+    // 공지사항 목록 조회
+    async getAnnouncements() {
+        const response = await fetch(`${API_URL}?action=get_announcements`, {
+            credentials: 'include'
+        });
+        
+        return response.json();
+    },
+    
+    // 공지사항 추가 (관리자)
+    async addAnnouncement(title, content) {
+        const formData = new FormData();
+        formData.append('action', 'add_announcement');
+        formData.append('title', title);
+        formData.append('content', content);
+        
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        return response.json();
+    },
+    
+    // 공지사항 삭제 (관리자)
+    async deleteAnnouncement(announcementId) {
+        const formData = new FormData();
+        formData.append('action', 'delete_announcement');
+        formData.append('announcement_id', announcementId);
+        
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        return response.json();
     }
 };
