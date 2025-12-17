@@ -141,6 +141,15 @@ header .subtitle {
     background-color: #dc2626;
 }
 
+.btn-warning {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
+}
+
 .btn-small {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
@@ -337,6 +346,27 @@ header .subtitle {
 .documents-list {
     display: grid;
     gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.documents-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.documents-list::-webkit-scrollbar-track {
+    background: var(--bg-color);
+    border-radius: 4px;
+}
+
+.documents-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.documents-list::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
 }
 
 .document-card {

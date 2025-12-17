@@ -85,6 +85,52 @@
                     </div>
                     
                     <div id="importResult" class="import-result" style="display: none;"></div>
+                    
+                    <!-- 개별 작품 추가 (JSON 텍스트) -->
+                    <div class="work-json-form" style="margin-top: 2rem;">
+                        <h3>📝 개별 작품 추가 (JSON 텍스트)</h3>
+                        <form id="addSingleWorkForm">
+                            <div class="form-group">
+                                <textarea id="addWorkJsonContent" placeholder='JSON 형식으로 작품 데이터를 입력하세요. 예:
+{
+    "R_004_나혜석-경희-여자계.txt": {
+        "metadata": { ... },
+        "chunkct": 62,
+        "segments": [ ... ]
+    }
+}' rows="10" style="width: 100%; font-family: monospace; font-size: 12px;" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">작품 추가</button>
+                        </form>
+                        <p class="help-text">
+                            새로운 R_XXX 작품을 JSON 형식으로 직접 입력하여 추가합니다.<br>
+                            기존에 동일한 R_XXX 번호가 있으면 추가되지 않습니다.
+                        </p>
+                    </div>
+                    <div id="addWorkResult" class="import-result" style="display: none;"></div>
+                    
+                    <!-- 개별 작품 교체 (JSON 텍스트) -->
+                    <div class="work-json-form" style="margin-top: 2rem;">
+                        <h3>🔄 개별 작품 교체 (JSON 텍스트)</h3>
+                        <form id="replaceWorkForm">
+                            <div class="form-group">
+                                <textarea id="replaceWorkJsonContent" placeholder='JSON 형식으로 교체할 작품 데이터를 입력하세요. 예:
+{
+    "R_004_나혜석-경희-여자계.txt": {
+        "metadata": { ... },
+        "chunkct": 62,
+        "segments": [ ... ]
+    }
+}' rows="10" style="width: 100%; font-family: monospace; font-size: 12px;" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-warning">작품 교체</button>
+                        </form>
+                        <p class="help-text" style="color: #e74c3c;">
+                            ⚠️ <strong>주의:</strong> 기존에 동일한 R_XXX 번호를 가진 작품의 내용이 완전히 교체됩니다.<br>
+                            모든 라벨러의 해당 작품에 대한 라벨링 데이터가 초기화(삭제)됩니다.
+                        </p>
+                    </div>
+                    <div id="replaceWorkResult" class="import-result" style="display: none;"></div>
                 </section>
 
                 <!-- 전체 진행 현황 -->
@@ -315,6 +361,98 @@
             } catch (error) {
                 resultEl.className = 'import-result error';
                 resultEl.textContent = '업로드 중 오류가 발생했습니다.';
+            }
+        });
+
+        // 개별 작품 추가 (JSON 텍스트)
+        document.getElementById('addSingleWorkForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const jsonContent = document.getElementById('addWorkJsonContent').value.trim();
+            const resultEl = document.getElementById('addWorkResult');
+            
+            if (!jsonContent) {
+                alert('JSON 내용을 입력해주세요.');
+                return;
+            }
+            
+            // JSON 유효성 검사
+            try {
+                JSON.parse(jsonContent);
+            } catch (parseError) {
+                alert('올바른 JSON 형식이 아닙니다. JSON 구문을 확인해주세요.');
+                return;
+            }
+            
+            try {
+                const response = await api.addSingleWork(jsonContent);
+                
+                resultEl.style.display = 'block';
+                
+                if (response.success) {
+                    resultEl.className = 'import-result success';
+                    resultEl.textContent = response.message;
+                    document.getElementById('addWorkJsonContent').value = '';
+                    await loadLabelers();
+                    await loadAllProgress();
+                } else {
+                    resultEl.className = 'import-result error';
+                    resultEl.textContent = response.message;
+                }
+            } catch (error) {
+                resultEl.className = 'import-result error';
+                resultEl.textContent = '작품 추가 중 오류가 발생했습니다.';
+            }
+        });
+
+        // 개별 작품 교체 (JSON 텍스트)
+        document.getElementById('replaceWorkForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const jsonContent = document.getElementById('replaceWorkJsonContent').value.trim();
+            const resultEl = document.getElementById('replaceWorkResult');
+            
+            if (!jsonContent) {
+                alert('JSON 내용을 입력해주세요.');
+                return;
+            }
+            
+            // JSON 유효성 검사
+            let parsedJson;
+            try {
+                parsedJson = JSON.parse(jsonContent);
+            } catch (parseError) {
+                alert('올바른 JSON 형식이 아닙니다. JSON 구문을 확인해주세요.');
+                return;
+            }
+            
+            // R_XXX 추출하여 확인 메시지
+            const docKey = Object.keys(parsedJson)[0];
+            const docIdMatch = docKey ? docKey.match(/^(R_\d+)/) : null;
+            const docId = docIdMatch ? docIdMatch[1] : '알 수 없음';
+            
+            if (!confirm(`정말로 ${docId} 작품을 교체하시겠습니까?\n\n⚠️ 주의: 모든 라벨러의 해당 작품에 대한 라벨링 데이터가 삭제됩니다!`)) {
+                return;
+            }
+            
+            try {
+                const response = await api.replaceWork(jsonContent);
+                
+                resultEl.style.display = 'block';
+                
+                if (response.success) {
+                    resultEl.className = 'import-result success';
+                    resultEl.textContent = response.message;
+                    document.getElementById('replaceWorkJsonContent').value = '';
+                    await loadLabelers();
+                    await loadAllProgress();
+                } else {
+                    resultEl.className = 'import-result error';
+                    resultEl.textContent = response.message;
+                }
+            } catch (error) {
+                resultEl.className = 'import-result error';
+                resultEl.textContent = '작품 교체 중 오류가 발생했습니다.';
             }
         });
 

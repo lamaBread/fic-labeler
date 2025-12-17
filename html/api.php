@@ -79,6 +79,14 @@ switch ($action) {
         handleImportJson();
         break;
     
+    case 'replace_work':
+        handleReplaceWork();
+        break;
+    
+    case 'add_single_work':
+        handleAddSingleWork();
+        break;
+    
     case 'get_all_progress':
         handleGetAllProgress();
         break;
@@ -485,6 +493,145 @@ function handleImportJson() {
     }
     
     jsonResponse(true, ['added' => $addedCount], "{$addedCount}개의 새로운 작품이 추가되었습니다.");
+}
+
+/**
+ * 개별 작품 교체 핸들러
+ * 동일한 R_XXX 번호를 가진 기존 작품을 제거하고 새 내용으로 교체
+ * 모든 라벨러의 해당 작품 라벨링 데이터도 초기화됨
+ */
+function handleReplaceWork() {
+    if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
+        jsonResponse(false, null, '관리자 권한이 필요합니다.');
+    }
+    
+    $jsonContent = $_POST['json_content'] ?? '';
+    
+    if (empty($jsonContent)) {
+        jsonResponse(false, null, 'JSON 내용이 필요합니다.');
+    }
+    
+    $newData = json_decode($jsonContent, true);
+    
+    if (!$newData || !is_array($newData)) {
+        jsonResponse(false, null, 'JSON 파싱에 실패했습니다. 올바른 형식인지 확인해주세요.');
+    }
+    
+    // 입력된 JSON에서 첫 번째 작품 추출
+    $newDocKey = array_key_first($newData);
+    if (!$newDocKey) {
+        jsonResponse(false, null, '작품 데이터가 없습니다.');
+    }
+    
+    $newDocData = $newData[$newDocKey];
+    $targetDocId = extractDocId($newDocKey);
+    
+    if (!$targetDocId) {
+        jsonResponse(false, null, 'R_XXX 형식의 문서 ID를 찾을 수 없습니다.');
+    }
+    
+    // 마스터 JSON 로드
+    $masterData = loadMasterJson();
+    
+    // 기존에 동일한 R_XXX를 가진 작품 찾아서 제거
+    $oldDocKey = null;
+    foreach ($masterData as $docKey => $docData) {
+        if (extractDocId($docKey) === $targetDocId) {
+            $oldDocKey = $docKey;
+            break;
+        }
+    }
+    
+    if (!$oldDocKey) {
+        jsonResponse(false, null, "기존에 {$targetDocId} 작품이 존재하지 않습니다. 작품 추가 기능을 사용해주세요.");
+    }
+    
+    // 마스터에서 기존 작품 제거 후 새 작품 추가
+    unset($masterData[$oldDocKey]);
+    $masterData[$newDocKey] = $newDocData;
+    
+    // R_XXX 번호순으로 정렬
+    $masterData = sortByDocId($masterData);
+    
+    // 마스터 JSON 저장
+    saveMasterJson($masterData);
+    
+    // 모든 라벨러의 JSON에서도 해당 작품 교체 (라벨링 데이터 초기화)
+    $users = loadUsers();
+    foreach ($users as $user) {
+        replaceWorkInLabelerJson($user['id'], $oldDocKey, $newDocKey, $newDocData, $user['nickname']);
+    }
+    
+    jsonResponse(true, [
+        'replaced_doc_id' => $targetDocId,
+        'old_key' => $oldDocKey,
+        'new_key' => $newDocKey
+    ], "{$targetDocId} 작품이 성공적으로 교체되었습니다. 모든 라벨러의 해당 작품 라벨링 데이터가 초기화되었습니다.");
+}
+
+/**
+ * 개별 작품 추가 핸들러
+ * 새 작품을 추가하고 R_XXX 번호순으로 정렬
+ */
+function handleAddSingleWork() {
+    if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
+        jsonResponse(false, null, '관리자 권한이 필요합니다.');
+    }
+    
+    $jsonContent = $_POST['json_content'] ?? '';
+    
+    if (empty($jsonContent)) {
+        jsonResponse(false, null, 'JSON 내용이 필요합니다.');
+    }
+    
+    $newData = json_decode($jsonContent, true);
+    
+    if (!$newData || !is_array($newData)) {
+        jsonResponse(false, null, 'JSON 파싱에 실패했습니다. 올바른 형식인지 확인해주세요.');
+    }
+    
+    // 입력된 JSON에서 첫 번째 작품 추출
+    $newDocKey = array_key_first($newData);
+    if (!$newDocKey) {
+        jsonResponse(false, null, '작품 데이터가 없습니다.');
+    }
+    
+    $newDocData = $newData[$newDocKey];
+    $newDocId = extractDocId($newDocKey);
+    
+    if (!$newDocId) {
+        jsonResponse(false, null, 'R_XXX 형식의 문서 ID를 찾을 수 없습니다.');
+    }
+    
+    // 마스터 JSON 로드
+    $masterData = loadMasterJson();
+    
+    // 이미 동일한 R_XXX를 가진 작품이 있는지 확인
+    foreach ($masterData as $docKey => $docData) {
+        if (extractDocId($docKey) === $newDocId) {
+            jsonResponse(false, null, "{$newDocId} 작품이 이미 존재합니다. 작품 교체 기능을 사용해주세요.");
+        }
+    }
+    
+    // 새 작품 추가
+    $masterData[$newDocKey] = $newDocData;
+    
+    // R_XXX 번호순으로 정렬
+    $masterData = sortByDocId($masterData);
+    
+    // 마스터 JSON 저장
+    saveMasterJson($masterData);
+    
+    // 모든 라벨러의 JSON에도 새 작품 추가 (정렬된 상태로)
+    $users = loadUsers();
+    foreach ($users as $user) {
+        addWorkToLabelerJson($user['id'], $newDocKey, $newDocData, $user['nickname']);
+    }
+    
+    jsonResponse(true, [
+        'added_doc_id' => $newDocId,
+        'doc_key' => $newDocKey
+    ], "{$newDocId} 작품이 성공적으로 추가되었습니다.");
 }
 
 function handleGetAllProgress() {

@@ -273,6 +273,134 @@ function calculateProgress($labelerData) {
 }
 
 /**
+ * R_XXX 문서 ID 기준으로 배열 정렬
+ * @param array $data 정렬할 데이터
+ * @return array 정렬된 데이터
+ */
+function sortByDocId($data) {
+    uksort($data, function($a, $b) {
+        $idA = extractDocId($a);
+        $idB = extractDocId($b);
+        
+        // R_XXX에서 숫자 부분 추출
+        $numA = intval(substr($idA, 2));
+        $numB = intval(substr($idB, 2));
+        
+        return $numA - $numB;
+    });
+    
+    return $data;
+}
+
+/**
+ * 라벨러 JSON에서 특정 작품을 교체 (라벨링 데이터 초기화)
+ * @param string $labelerId 라벨러 ID
+ * @param string $oldDocKey 기존 문서 키
+ * @param string $newDocKey 새 문서 키
+ * @param array $newDocData 새 문서 데이터
+ * @param string|null $nickname 라벨러 닉네임
+ * @return bool 성공 여부
+ */
+function replaceWorkInLabelerJson($labelerId, $oldDocKey, $newDocKey, $newDocData, $nickname = null) {
+    $path = $nickname ? getLabelerJsonPath($labelerId, $nickname) : findLabelerJsonPath($labelerId);
+    
+    if (!$path || !file_exists($path)) {
+        return false;
+    }
+    
+    // 파일 핸들을 열고 배타적 잠금 획득
+    $fp = fopen($path, 'c+');
+    if (!$fp) {
+        return false;
+    }
+    
+    if (!flock($fp, LOCK_EX)) {
+        fclose($fp);
+        return false;
+    }
+    
+    try {
+        // 잠금 상태에서 최신 데이터 읽기
+        $content = stream_get_contents($fp);
+        $labelerData = json_decode($content, true) ?: [];
+        
+        // 기존 작품 제거
+        if (isset($labelerData[$oldDocKey])) {
+            unset($labelerData[$oldDocKey]);
+        }
+        
+        // 새 작품 추가 (라벨링 데이터 초기화 상태)
+        $labelerData[$newDocKey] = $newDocData;
+        
+        // R_XXX 번호순으로 정렬
+        $labelerData = sortByDocId($labelerData);
+        
+        // 파일 처음으로 이동하고 내용 덮어쓰기
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($labelerData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        fflush($fp);
+        
+        return true;
+    } finally {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+}
+
+/**
+ * 라벨러 JSON에 새 작품 추가 (정렬 유지)
+ * @param string $labelerId 라벨러 ID
+ * @param string $newDocKey 새 문서 키
+ * @param array $newDocData 새 문서 데이터
+ * @param string|null $nickname 라벨러 닉네임
+ * @return bool 성공 여부
+ */
+function addWorkToLabelerJson($labelerId, $newDocKey, $newDocData, $nickname = null) {
+    $path = $nickname ? getLabelerJsonPath($labelerId, $nickname) : findLabelerJsonPath($labelerId);
+    
+    if (!$path || !file_exists($path)) {
+        return false;
+    }
+    
+    // 파일 핸들을 열고 배타적 잠금 획득
+    $fp = fopen($path, 'c+');
+    if (!$fp) {
+        return false;
+    }
+    
+    if (!flock($fp, LOCK_EX)) {
+        fclose($fp);
+        return false;
+    }
+    
+    try {
+        // 잠금 상태에서 최신 데이터 읽기
+        $content = stream_get_contents($fp);
+        $labelerData = json_decode($content, true) ?: [];
+        
+        // 새 작품 추가
+        if (!isset($labelerData[$newDocKey])) {
+            $labelerData[$newDocKey] = $newDocData;
+        }
+        
+        // R_XXX 번호순으로 정렬
+        $labelerData = sortByDocId($labelerData);
+        
+        // 파일 처음으로 이동하고 내용 덮어쓰기
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($labelerData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        fflush($fp);
+        
+        return true;
+    } finally {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+}
+
+/**
  * 공지사항 로드
  */
 function loadAnnouncements() {

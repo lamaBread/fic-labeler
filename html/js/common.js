@@ -202,5 +202,35 @@ const api = {
         });
         
         return response.json();
+    },
+    
+    // 개별 작품 교체 (관리자)
+    async replaceWork(jsonContent) {
+        const formData = new FormData();
+        formData.append('action', 'replace_work');
+        formData.append('json_content', jsonContent);
+        
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        return response.json();
+    },
+    
+    // 개별 작품 추가 (관리자)
+    async addSingleWork(jsonContent) {
+        const formData = new FormData();
+        formData.append('action', 'add_single_work');
+        formData.append('json_content', jsonContent);
+        
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        return response.json();
     }
 };
