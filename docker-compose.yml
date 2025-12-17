@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   labeler-web:
     image: php:8.2-apache
@@ -17,6 +15,7 @@ services:
       - ADMIN_KEY=${ADMIN_KEY}
     command: >
       bash -c "
+        apt-get update && apt-get install -y libzip-dev &&
         docker-php-ext-install zip &&
         a2enmod rewrite &&
         chown -R www-data:www-data /var/www/html/data &&
