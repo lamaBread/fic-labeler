@@ -70,6 +70,95 @@ function saveUsers($users) {
 }
 
 /**
+ * 사용자 활동 시간 업데이트 (원자적 파일 접근)
+ * @param string $userId 사용자 ID
+ * @return bool 성공 여부
+ */
+function updateUserActivity($userId) {
+    $path = USERS_JSON;
+    
+    // 파일이 없으면 실패
+    if (!file_exists($path)) {
+        return false;
+    }
+    
+    // 파일 핸들을 열고 배타적 잠금 획득
+    $fp = fopen($path, 'c+');
+    if (!$fp) {
+        return false;
+    }
+    
+    // 배타적 잠금 (쓰기 잠금) - 다른 프로세스가 읽기/쓰기 완료될 때까지 대기
+    if (!flock($fp, LOCK_EX)) {
+        fclose($fp);
+        return false;
+    }
+    
+    try {
+        // 잠금 상태에서 최신 데이터 읽기
+        $content = stream_get_contents($fp);
+        $users = json_decode($content, true) ?: [];
+        
+        // 사용자 찾아서 last_activity 업데이트
+        $found = false;
+        foreach ($users as &$user) {
+            if ($user['id'] === $userId) {
+                $user['last_activity'] = date('Y-m-d H:i:s');
+                $found = true;
+                break;
+            }
+        }
+        
+        if (!$found) {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+            return false;
+        }
+        
+        // 파일 처음으로 이동하고 내용 덮어쓰기
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($users, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        fflush($fp);
+        
+        return true;
+    } finally {
+        // 잠금 해제 및 파일 닫기
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+}
+
+/**
+ * 모든 사용자의 활동 상태 조회
+ * @return array 사용자 활동 정보 배열
+ */
+function getUsersActivity() {
+    $users = loadUsers();
+    $result = [];
+    
+    foreach ($users as $user) {
+        $lastActivity = $user['last_activity'] ?? null;
+        $isActive = false;
+        
+        if ($lastActivity) {
+            $lastActivityTime = strtotime($lastActivity);
+            $tenMinutesAgo = time() - (10 * 60); // 10분 전
+            $isActive = $lastActivityTime >= $tenMinutesAgo;
+        }
+        
+        $result[] = [
+            'id' => $user['id'],
+            'nickname' => $user['nickname'],
+            'last_activity' => $lastActivity,
+            'is_active' => $isActive
+        ];
+    }
+    
+    return $result;
+}
+
+/**
  * 마스터 JSON 로드
  */
 function loadMasterJson() {

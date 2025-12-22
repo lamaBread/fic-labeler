@@ -110,6 +110,17 @@ switch ($action) {
         handleDeleteAnnouncement();
         break;
     
+    // ========================
+    // 활동 추적
+    // ========================
+    case 'heartbeat':
+        handleHeartbeat();
+        break;
+    
+    case 'get_user_activity':
+        handleGetUserActivity();
+        break;
+    
     default:
         jsonResponse(false, null, '알 수 없는 액션입니다.');
 }
@@ -134,6 +145,9 @@ function handleLogin() {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_key'] = $user['key'];
     $_SESSION['is_labeler'] = true;
+    
+    // 로그인 시 활동 시간 업데이트
+    updateUserActivity($user['id']);
     
     jsonResponse(true, [
         'id' => $user['id'],
@@ -226,6 +240,9 @@ function handleGetSegments() {
         jsonResponse(false, null, '문서를 찾을 수 없습니다.');
     }
     
+    // 문서 열기 시 활동 시간 업데이트
+    updateUserActivity($labelerId);
+    
     jsonResponse(true, $labelerData[$docKey]);
 }
 
@@ -314,6 +331,9 @@ function handleSaveLabel() {
     $nickname = $user ? $user['nickname'] : null;
     
     saveLabelerJson($labelerId, $labelerData, $nickname);
+    
+    // 저장 시 활동 시간 업데이트
+    updateUserActivity($labelerId);
     
     jsonResponse(true, null, '저장되었습니다.');
 }
@@ -830,5 +850,40 @@ function handleDeleteAnnouncement() {
     saveAnnouncements($announcements);
     
     jsonResponse(true, null, '공지사항이 삭제되었습니다.');
+}
+
+// ========================
+// 활동 추적 핸들러
+// ========================
+
+/**
+ * Heartbeat - 라벨러 활동 시간 업데이트
+ * 문장 이동, 페이지 접속 등에서 호출
+ */
+function handleHeartbeat() {
+    if (!isset($_SESSION['user_id'])) {
+        jsonResponse(false, null, '로그인이 필요합니다.');
+    }
+    
+    $labelerId = $_SESSION['user_id'];
+    $result = updateUserActivity($labelerId);
+    
+    if ($result) {
+        jsonResponse(true, null, '활동 시간이 업데이트되었습니다.');
+    } else {
+        jsonResponse(false, null, '활동 시간 업데이트에 실패했습니다.');
+    }
+}
+
+/**
+ * 관리자용 - 모든 사용자의 활동 상태 조회
+ */
+function handleGetUserActivity() {
+    if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
+        jsonResponse(false, null, '관리자 권한이 필요합니다.');
+    }
+    
+    $activity = getUsersActivity();
+    jsonResponse(true, $activity);
 }
 ?>

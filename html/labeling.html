@@ -133,6 +133,10 @@
         let currentSegmentIdx = 0;
         let documentData = null;
         let allSegments = [];
+        
+        // Heartbeat debounce 관련 변수
+        let heartbeatTimeout = null;
+        const HEARTBEAT_DEBOUNCE_MS = 10000; // 10초 debounce
 
         // 페이지 초기화
         (async function init() {
@@ -234,6 +238,9 @@
             
             currentSegmentIdx = idx;
             const segment = allSegments[idx];
+            
+            // Debounced heartbeat - 10초 내 중복 호출 방지
+            sendHeartbeat();
             
             // 텍스트 표시
             document.getElementById('segmentText').innerHTML = 
@@ -353,6 +360,20 @@
                 }
             }
         });
+        
+        // Debounced heartbeat 전송
+        function sendHeartbeat() {
+            // 이전 타이머가 있으면 취소하지 않음 (debounce leading edge)
+            if (heartbeatTimeout) return;
+            
+            // 즉시 heartbeat 전송
+            api.heartbeat().catch(err => console.log('Heartbeat failed:', err));
+            
+            // 다음 heartbeat까지 대기
+            heartbeatTimeout = setTimeout(() => {
+                heartbeatTimeout = null;
+            }, HEARTBEAT_DEBOUNCE_MS);
+        }
     </script>
 </body>
 </html>

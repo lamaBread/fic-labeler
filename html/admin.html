@@ -55,6 +55,7 @@
                             <thead>
                                 <tr>
                                     <th>별명</th>
+                                    <th>상태</th>
                                     <th>개인 키</th>
                                     <th>진행률</th>
                                     <th>생성일</th>
@@ -62,7 +63,7 @@
                                 </tr>
                             </thead>
                             <tbody id="labelersTableBody">
-                                <tr><td colspan="5" class="loading">로딩 중...</td></tr>
+                                <tr><td colspan="6" class="loading">로딩 중...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -217,6 +218,37 @@
             await loadLabelers();
             await loadAllProgress();
             await loadAdminAnnouncements();
+            
+            // 30초마다 활동 상태 업데이트
+            setInterval(updateUserActivityStatus, 30000);
+        }
+        
+        // 사용자 활동 상태만 업데이트
+        async function updateUserActivityStatus() {
+            try {
+                const response = await api.getUserActivity();
+                if (response.success) {
+                    const activityData = response.data;
+                    
+                    // 각 라벨러의 상태 뱃지 업데이트
+                    activityData.forEach(user => {
+                        const statusEl = document.getElementById(`status-${user.id}`);
+                        if (statusEl) {
+                            if (user.is_active) {
+                                statusEl.className = 'status-badge status-active';
+                                statusEl.textContent = '활동 중';
+                                statusEl.title = `마지막 활동: ${user.last_activity}`;
+                            } else {
+                                statusEl.className = 'status-badge status-inactive';
+                                statusEl.textContent = '오프라인';
+                                statusEl.title = user.last_activity ? `마지막 활동: ${user.last_activity}` : '활동 기록 없음';
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.log('활동 상태 업데이트 실패:', error);
+            }
         }
 
         // 라벨러 목록 로드
@@ -228,13 +260,39 @@
                 const labelers = response.data;
                 
                 if (labelers.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="no-data">등록된 라벨러가 없습니다.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="no-data">등록된 라벨러가 없습니다.</td></tr>';
                     return;
                 }
                 
-                tbody.innerHTML = labelers.map(labeler => `
+                // 활동 상태도 함께 로드
+                let activityMap = {};
+                try {
+                    const activityResponse = await api.getUserActivity();
+                    if (activityResponse.success) {
+                        activityResponse.data.forEach(user => {
+                            activityMap[user.id] = user;
+                        });
+                    }
+                } catch (e) {
+                    console.log('활동 상태 로드 실패:', e);
+                }
+                
+                tbody.innerHTML = labelers.map(labeler => {
+                    const activity = activityMap[labeler.id] || {};
+                    const isActive = activity.is_active || false;
+                    const lastActivity = activity.last_activity || null;
+                    const statusClass = isActive ? 'status-active' : 'status-inactive';
+                    const statusText = isActive ? '활동 중' : '오프라인';
+                    const statusTitle = lastActivity ? `마지막 활동: ${lastActivity}` : '활동 기록 없음';
+                    
+                    return `
                     <tr>
                         <td><strong>${escapeHtml(labeler.nickname)}</strong></td>
+                        <td>
+                            <span id="status-${labeler.id}" class="status-badge ${statusClass}" title="${statusTitle}">
+                                ${statusText}
+                            </span>
+                        </td>
                         <td>
                             <code class="key-code">${labeler.key}</code>
                             <button class="btn btn-tiny" onclick="copyToClipboard('${labeler.key}')">복사</button>
@@ -252,9 +310,9 @@
                             </button>
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
             } else {
-                tbody.innerHTML = `<tr><td colspan="5" class="error">${response.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="error">${response.message}</td></tr>`;
             }
         }
 

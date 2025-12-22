@@ -232,5 +232,28 @@ const api = {
         });
         
         return response.json();
+    },
+    
+    // Heartbeat - 활동 시간 업데이트
+    async heartbeat() {
+        const formData = new FormData();
+        formData.append('action', 'heartbeat');
+        
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        return response.json();
+    },
+    
+    // 관리자용 - 사용자 활동 상태 조회
+    async getUserActivity() {
+        const response = await fetch(`${API_URL}?action=get_user_activity`, {
+            credentials: 'include'
+        });
+        
+        return response.json();
     }
 };
