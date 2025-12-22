@@ -298,6 +298,11 @@ function handleSaveLabel() {
         jsonResponse(false, null, 'narratedtime은 필수 입력 항목입니다.');
     }
     
+    // narratedtime 값 검증: -1 이상이어야 함 (-1은 '정답 없음'을 의미)
+    if (floatval($narratedtime) < -1) {
+        jsonResponse(false, null, 'narratedtime은 -1 이상이어야 합니다.');
+    }
+    
     $labelerId = $_SESSION['user_id'];
     $labelerData = loadLabelerJson($labelerId);
     

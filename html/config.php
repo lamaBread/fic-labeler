@@ -6,6 +6,9 @@
  * 1. ADMIN_KEY: 관리자 접근용 비밀키 (반드시 변경 필요!)
  */
 
+// 타임존 설정 (한국 표준시)
+date_default_timezone_set('Asia/Seoul');
+
 // 에러 리포팅 설정 (프로덕션에서는 display_errors를 0으로 유지)
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
