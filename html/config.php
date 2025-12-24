@@ -34,6 +34,19 @@ if (empty($adminKey)) {
 }
 define('ADMIN_KEY', $adminKey);
 
+// ============================================
+// CLOVA OCR API 설정 - 환경변수에서 로드
+// .env 파일에서 설정하세요
+// ============================================
+$clovaOcrInvokeUrl = getenv('CLOVA_OCR_INVOKE_URL');
+$clovaOcrSecretKey = getenv('CLOVA_OCR_SECRET_KEY');
+
+if (empty($clovaOcrInvokeUrl) || empty($clovaOcrSecretKey)) {
+    error_log('CLOVA OCR API environment variables are not set!');
+}
+define('CLOVA_OCR_INVOKE_URL', $clovaOcrInvokeUrl ?: '');
+define('CLOVA_OCR_SECRET_KEY', $clovaOcrSecretKey ?: '');
+
 // 세션 설정
 session_start();
 

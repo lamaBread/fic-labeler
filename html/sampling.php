@@ -1,3 +1,164 @@
+<?php
+/**
+ * 샘플링 도구 - 리다이렉트
+ * 새로운 sampling/ 폴더로 이동합니다.
+ */
+header('Location: sampling/index.php');
+exit;
+
+/* 
+ * 기존 코드는 sampling/ 폴더로 분리되었습니다:
+ * - sampling/index.php : 메인 HTML
+ * - sampling/api.php : 백엔드 API
+ * - sampling/js/*.js : JavaScript
+ * - sampling/css/style.css : 스타일
+ */
+
+// AJAX 요청 처리
+if (isset($_GET['action']) || isset($_POST['action'])) {
+    $action = $_GET['action'] ?? $_POST['action'];
+    
+    // 관리자 인증 확인 (login 액션 제외)
+    if ($action !== 'login' && (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true)) {
+        jsonResponse(false, null, '관리자 인증이 필요합니다.');
+    }
+    
+    switch ($action) {
+        case 'login':
+            $key = $_POST['admin_key'] ?? '';
+            if ($key === ADMIN_KEY) {
+                $_SESSION['is_admin'] = true;
+                jsonResponse(true, null, '로그인 성공');
+            } else {
+                jsonResponse(false, null, '관리자 키가 올바르지 않습니다.');
+            }
+            break;
+            
+        case 'logout':
+            $_SESSION['is_admin'] = false;
+            session_destroy();
+            jsonResponse(true, null, '로그아웃 되었습니다.');
+            break;
+            
+        case 'check_session':
+            jsonResponse(true, ['is_admin' => isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true]);
+            break;
+            
+        case 'list':
+            // WIP 파일 목록 반환
+            $files = [];
+            if (is_dir(SAMPLING_WIP_PATH)) {
+                foreach (glob(SAMPLING_WIP_PATH . '/*.json') as $file) {
+                    $filename = basename($file);
+                    $files[] = [
+                        'filename' => $filename,
+                        'modified' => date('Y-m-d H:i:s', filemtime($file)),
+                        'size' => filesize($file)
+                    ];
+                }
+            }
+            // 수정일 기준 내림차순 정렬
+            usort($files, function($a, $b) {
+                return strtotime($b['modified']) - strtotime($a['modified']);
+            });
+            jsonResponse(true, $files);
+            break;
+            
+        case 'load':
+            // 특정 WIP 파일 로드
+            $filename = $_GET['filename'] ?? '';
+            if (empty($filename)) {
+                jsonResponse(false, null, '파일명이 필요합니다.');
+            }
+            $filename = basename($filename); // 보안: 경로 순회 방지
+            $filepath = SAMPLING_WIP_PATH . '/' . $filename;
+            if (!file_exists($filepath)) {
+                jsonResponse(false, null, '파일을 찾을 수 없습니다.');
+            }
+            $content = file_get_contents($filepath);
+            $json = json_decode($content, true);
+            if ($json === null) {
+                jsonResponse(false, null, 'JSON 파싱 오류');
+            }
+            jsonResponse(true, $json);
+            break;
+            
+        case 'save':
+            // WIP 파일 저장
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (!$data || !isset($data['filename']) || !isset($data['content'])) {
+                jsonResponse(false, null, '잘못된 요청입니다.');
+            }
+            $filename = basename($data['filename']); // 보안: 경로 순회 방지
+            if (!preg_match('/\.json$/i', $filename)) {
+                $filename .= '.json';
+            }
+            $filepath = SAMPLING_WIP_PATH . '/' . $filename;
+            $result = file_put_contents($filepath, json_encode($data['content'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+            if ($result === false) {
+                jsonResponse(false, null, '파일 저장 실패');
+            }
+            jsonResponse(true, ['filename' => $filename], '저장 완료');
+            break;
+            
+        case 'check_exists':
+            // 파일 존재 여부 확인
+            $filename = $_GET['filename'] ?? '';
+            if (empty($filename)) {
+                jsonResponse(false, null, '파일명이 필요합니다.');
+            }
+            $filename = basename($filename);
+            if (!preg_match('/\.json$/i', $filename)) {
+                $filename .= '.json';
+            }
+            $filepath = SAMPLING_WIP_PATH . '/' . $filename;
+            jsonResponse(true, ['exists' => file_exists($filepath), 'filename' => $filename]);
+            break;
+            
+        case 'download':
+            // 파일 다운로드
+            $filename = $_GET['filename'] ?? '';
+            if (empty($filename)) {
+                die('파일명이 필요합니다.');
+            }
+            $filename = basename($filename);
+            $filepath = SAMPLING_WIP_PATH . '/' . $filename;
+            if (!file_exists($filepath)) {
+                die('파일을 찾을 수 없습니다.');
+            }
+            header('Content-Type: application/json');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . filesize($filepath));
+            readfile($filepath);
+            exit;
+            
+        case 'delete':
+            // WIP 파일 삭제
+            $filename = $_GET['filename'] ?? '';
+            if (empty($filename)) {
+                jsonResponse(false, null, '파일명이 필요합니다.');
+            }
+            $filename = basename($filename);
+            $filepath = SAMPLING_WIP_PATH . '/' . $filename;
+            if (!file_exists($filepath)) {
+                jsonResponse(false, null, '파일을 찾을 수 없습니다.');
+            }
+            if (unlink($filepath)) {
+                jsonResponse(true, null, '삭제 완료');
+            } else {
+                jsonResponse(false, null, '삭제 실패');
+            }
+            break;
+            
+        default:
+            jsonResponse(false, null, '알 수 없는 액션');
+    }
+    exit;
+}
+
+// 세션 상태 확인
+$isAdmin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true;
+?>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -47,7 +208,8 @@
             color: #555;
         }
         input[type="text"],
-        input[type="number"] {
+        input[type="number"],
+        input[type="password"] {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
@@ -97,6 +259,124 @@
         }
         button.success:hover {
             background-color: #218838;
+        }
+        /* 로그인 섹션 */
+        .login-section {
+            max-width: 400px;
+            margin: 100px auto;
+        }
+        .login-section h1 {
+            margin-bottom: 20px;
+        }
+        /* 헤더 네비게이션 */
+        .header-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .header-nav a {
+            color: #007bff;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .header-nav a:hover {
+            text-decoration: underline;
+        }
+        .header-nav .right-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        /* 모달 스타일 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .file-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-list li:hover {
+            background: #f5f5f5;
+        }
+        .file-info {
+            flex: 1;
+            cursor: pointer;
+        }
+        .file-info .filename {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .file-info .meta {
+            font-size: 12px;
+            color: #666;
+        }
+        .file-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .file-actions button {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0;
+        }
+        /* 파일 관리 버튼 그룹 */
+        .file-management {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .file-management h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .current-file-info {
+            background: #d4edda;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            color: #155724;
+        }
+        .current-file-info.unsaved {
+            background: #fff3cd;
+            color: #856404;
         }
         .inline-group {
             display: flex;
@@ -188,9 +468,48 @@
     </style>
 </head>
 <body>
-    <h1>📚 책 샘플링 도구</h1>
+    <!-- 로그인 섹션 -->
+    <div id="loginSection" class="login-section panel" style="<?php echo $isAdmin ? 'display:none;' : ''; ?>">
+        <h1>🔐 관리자 로그인</h1>
+        <p>샘플링 도구는 관리자 전용입니다.</p>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <label for="adminKey">관리자 키</label>
+            <input type="password" id="adminKey" placeholder="관리자 키를 입력하세요" required>
+            <button type="submit">로그인</button>
+        </form>
+        <p style="margin-top: 20px;">
+            <a href="admin.html">← 관리자 페이지로</a>
+        </p>
+    </div>
 
-    <div class="container">
+    <!-- 메인 컨텐츠 (로그인 후 표시) -->
+    <div id="mainContent" style="<?php echo $isAdmin ? '' : 'display:none;'; ?>">
+        <!-- 헤더 네비게이션 -->
+        <div class="header-nav">
+            <div>
+                <a href="admin.html">← 관리자 페이지</a>
+            </div>
+            <h1 style="margin: 0; flex: 1; text-align: center;">📚 책 샘플링 도구</h1>
+            <div class="right-section">
+                <span id="currentFileDisplay"></span>
+                <button class="secondary" onclick="handleLogout()">로그아웃</button>
+            </div>
+        </div>
+
+        <!-- 파일 관리 섹션 -->
+        <div class="panel full-width file-management">
+            <h3>📁 파일 관리</h3>
+            <div id="currentFileInfo" class="current-file-info" style="display: none;">
+                현재 작업 파일: <strong id="currentFileName">-</strong>
+                <span id="unsavedIndicator" style="display: none;"> (저장되지 않은 변경사항 있음)</span>
+            </div>
+            <button onclick="showFileListModal()">📂 작업 파일 열기</button>
+            <button class="success" onclick="saveToServer()">💾 서버에 저장</button>
+            <button class="secondary" onclick="downloadCurrentFile()">⬇️ 파일 다운로드</button>
+            <button class="danger" onclick="resetAll()">🗑️ 전체 초기화</button>
+        </div>
+
+        <div class="container">
         <!-- 페이지 샘플링 섹션 -->
         <div class="panel">
             <h2>📄 페이지 샘플링</h2>
@@ -256,7 +575,7 @@
                 </div>
                 <div>
                     <label for="originalid">원본 ID (originalid)</label>
-                    <input type="text" id="originalid" placeholder="예: 004-나혜석-경희-여자지계.txt">
+                    <input type="text" id="originalid" placeholder="예: 004-나혜석-경희-여자지계">
                 </div>
                 <div>
                     <label for="numwords">단어 수 (numwords)</label>
@@ -273,11 +592,10 @@
             <button onclick="generateFilename()">파일명 자동 생성</button>
             <div>
                 <label for="filename">파일명 (JSON 키)</label>
-                <input type="text" id="filename" placeholder="예: R-004-나혜석-경희-여자지계.txt">
+                <input type="text" id="filename" placeholder="예: R-004-나혜석-경희-여자지계">
             </div>
 
             <button class="success" onclick="initializeJson()">새 JSON 초기화</button>
-            <button class="danger" onclick="resetAll()">전체 초기화</button>
         </div>
 
         <!-- 텍스트 입력 섹션 -->
@@ -358,14 +676,328 @@
         <div class="panel full-width">
             <h2>📄 현재 JSON 상태</h2>
             <button onclick="copyJson()">📋 JSON 복사</button>
-            <button class="secondary" onclick="downloadJson()">💾 JSON 다운로드</button>
             <div id="jsonOutput">JSON이 초기화되지 않았습니다. "새 JSON 초기화" 버튼을 눌러주세요.</div>
+        </div>
+    </div>
+    </div>
+
+    <!-- 파일 목록 모달 -->
+    <div id="fileListModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>📂 작업 파일 목록</h3>
+            <ul id="fileList" class="file-list">
+                <li>로딩 중...</li>
+            </ul>
+            <hr>
+            <button class="secondary" onclick="closeFileListModal()">닫기</button>
+        </div>
+    </div>
+
+    <!-- 덮어쓰기 확인 모달 -->
+    <div id="overwriteModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>⚠️ 파일 덮어쓰기 확인</h3>
+            <p id="overwriteMessage">동일한 파일이 이미 존재합니다. 덮어쓰시겠습니까?</p>
+            <button class="danger" onclick="confirmOverwrite()">덮어쓰기</button>
+            <button class="secondary" onclick="closeOverwriteModal()">취소</button>
         </div>
     </div>
 
     <script>
         // 전역 상태
         let currentJson = null;
+        let currentServerFilename = null; // 서버에 저장된 파일명
+        let hasUnsavedChanges = false;
+        let pendingOverwriteCallback = null;
+
+        // ================== 인증 관련 함수 ==================
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            const adminKey = document.getElementById('adminKey').value;
+            
+            try {
+                const response = await fetch('sampling.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=login&admin_key=${encodeURIComponent(adminKey)}`
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                } else {
+                    alert(result.message || '로그인 실패');
+                }
+            } catch (error) {
+                alert('로그인 중 오류 발생: ' + error.message);
+            }
+        }
+
+        async function handleLogout() {
+            if (hasUnsavedChanges && !confirm('저장되지 않은 변경사항이 있습니다. 로그아웃하시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                await fetch('sampling.php?action=logout');
+                document.getElementById('loginSection').style.display = 'block';
+                document.getElementById('mainContent').style.display = 'none';
+                currentJson = null;
+                currentServerFilename = null;
+                hasUnsavedChanges = false;
+            } catch (error) {
+                alert('로그아웃 중 오류 발생');
+            }
+        }
+
+        // ================== 파일 관리 함수 ==================
+
+        async function loadFileList() {
+            try {
+                const response = await fetch('sampling.php?action=list');
+                const result = await response.json();
+                
+                if (result.success) {
+                    return result.data;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('파일 목록 로드 실패:', error);
+                return [];
+            }
+        }
+
+        async function showFileListModal() {
+            const modal = document.getElementById('fileListModal');
+            const fileList = document.getElementById('fileList');
+            
+            modal.classList.add('active');
+            fileList.innerHTML = '<li>로딩 중...</li>';
+            
+            const files = await loadFileList();
+            
+            if (files.length === 0) {
+                fileList.innerHTML = '<li>저장된 파일이 없습니다.</li>';
+            } else {
+                fileList.innerHTML = files.map(file => `
+                    <li>
+                        <div class="file-info" onclick="loadFileFromServer('${file.filename}')">
+                            <div class="filename">${file.filename}</div>
+                            <div class="meta">수정: ${file.modified} | 크기: ${formatFileSize(file.size)}</div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="secondary" onclick="event.stopPropagation(); downloadFile('${file.filename}')">⬇️</button>
+                            <button class="danger" onclick="event.stopPropagation(); deleteFile('${file.filename}')">🗑️</button>
+                        </div>
+                    </li>
+                `).join('');
+            }
+        }
+
+        function closeFileListModal() {
+            document.getElementById('fileListModal').classList.remove('active');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function loadFileFromServer(filename) {
+            if (hasUnsavedChanges && !confirm('저장되지 않은 변경사항이 있습니다. 다른 파일을 열시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`sampling.php?action=load&filename=${encodeURIComponent(filename)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentJson = result.data;
+                    currentServerFilename = filename;
+                    hasUnsavedChanges = false;
+                    
+                    // UI 업데이트
+                    const key = Object.keys(currentJson)[0];
+                    if (key && currentJson[key].metadata) {
+                        const meta = currentJson[key].metadata;
+                        document.getElementById('docid').value = meta.docid || '';
+                        document.getElementById('title').value = meta.title || '';
+                        document.getElementById('author').value = meta.author || '';
+                        document.getElementById('source').value = meta.source || '';
+                        document.getElementById('originalid').value = meta.originalid || '';
+                        document.getElementById('numwords').value = meta.numwords || 0;
+                        document.getElementById('numchars').value = meta.numchars || 0;
+                        document.getElementById('filename').value = key;
+                    }
+                    
+                    updateJsonDisplay();
+                    updateSegmentInfo();
+                    updateCurrentFileDisplay();
+                    closeFileListModal();
+                    
+                    alert(`파일 "${filename}" 로드 완료!`);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('파일 로드 실패: ' + error.message);
+            }
+        }
+
+        async function saveToServer(forceOverwrite = false) {
+            if (!currentJson) {
+                alert('저장할 JSON이 없습니다. 먼저 JSON을 초기화해주세요.');
+                return;
+            }
+            
+            const key = Object.keys(currentJson)[0];
+            const filename = key.replace(/\.txt$/i, '') + '.json';
+            
+            // 덮어쓰기 확인 (신규 파일이거나 다른 파일명일 때)
+            if (!forceOverwrite && currentServerFilename !== filename) {
+                try {
+                    const checkResponse = await fetch(`sampling.php?action=check_exists&filename=${encodeURIComponent(filename)}`);
+                    const checkResult = await checkResponse.json();
+                    
+                    if (checkResult.success && checkResult.data.exists) {
+                        showOverwriteModal(filename, () => saveToServer(true));
+                        return;
+                    }
+                } catch (error) {
+                    console.error('파일 존재 확인 실패:', error);
+                }
+            }
+            
+            try {
+                const response = await fetch('sampling.php?action=save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: filename,
+                        content: currentJson
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentServerFilename = result.data.filename;
+                    hasUnsavedChanges = false;
+                    updateCurrentFileDisplay();
+                    alert(`서버에 저장 완료: ${result.data.filename}`);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('저장 실패: ' + error.message);
+            }
+        }
+
+        function showOverwriteModal(filename, callback) {
+            document.getElementById('overwriteMessage').textContent = 
+                `"${filename}" 파일이 이미 존재합니다. 덮어쓰시겠습니까?`;
+            document.getElementById('overwriteModal').classList.add('active');
+            pendingOverwriteCallback = callback;
+        }
+
+        function closeOverwriteModal() {
+            document.getElementById('overwriteModal').classList.remove('active');
+            pendingOverwriteCallback = null;
+        }
+
+        function confirmOverwrite() {
+            closeOverwriteModal();
+            if (pendingOverwriteCallback) {
+                pendingOverwriteCallback();
+            }
+        }
+
+        async function downloadFile(filename) {
+            window.location.href = `sampling.php?action=download&filename=${encodeURIComponent(filename)}`;
+        }
+
+        function downloadCurrentFile() {
+            if (!currentJson) {
+                alert('다운로드할 JSON이 없습니다.');
+                return;
+            }
+            
+            if (currentServerFilename) {
+                // 서버에 저장된 파일이 있으면 서버에서 다운로드
+                downloadFile(currentServerFilename);
+            } else {
+                // 없으면 현재 메모리의 JSON을 다운로드
+                const key = Object.keys(currentJson)[0];
+                const filename = key.replace(/\.txt$/i, '') + '.json';
+                const jsonText = JSON.stringify(currentJson, null, 2);
+                const blob = new Blob([jsonText], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        async function deleteFile(filename) {
+            if (!confirm(`"${filename}" 파일을 삭제하시겠습니까?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`sampling.php?action=delete&filename=${encodeURIComponent(filename)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (currentServerFilename === filename) {
+                        currentServerFilename = null;
+                        updateCurrentFileDisplay();
+                    }
+                    showFileListModal(); // 목록 새로고침
+                    alert('삭제 완료!');
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('삭제 실패: ' + error.message);
+            }
+        }
+
+        function updateCurrentFileDisplay() {
+            const fileInfoDiv = document.getElementById('currentFileInfo');
+            const fileNameSpan = document.getElementById('currentFileName');
+            const unsavedIndicator = document.getElementById('unsavedIndicator');
+            
+            if (currentJson) {
+                fileInfoDiv.style.display = 'block';
+                fileNameSpan.textContent = currentServerFilename || '(저장되지 않음)';
+                
+                if (hasUnsavedChanges) {
+                    fileInfoDiv.classList.add('unsaved');
+                    unsavedIndicator.style.display = 'inline';
+                } else {
+                    fileInfoDiv.classList.remove('unsaved');
+                    unsavedIndicator.style.display = 'none';
+                }
+            } else {
+                fileInfoDiv.style.display = 'none';
+            }
+        }
+
+        function markAsChanged() {
+            hasUnsavedChanges = true;
+            updateCurrentFileDisplay();
+        }
+
+        // ================== 기존 기능들 ==================
 
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
@@ -379,6 +1011,7 @@
                     currentJson = JSON.parse(saved);
                     updateJsonDisplay();
                     updateSegmentInfo();
+                    updateCurrentFileDisplay();
                 } catch (e) {
                     console.error('저장된 데이터 복원 실패:', e);
                 }
@@ -456,13 +1089,17 @@
             }
         }
 
-        // 무작위 샘플 추출
+        // 무작위 샘플 추출 (Fisher-Yates 셔플 - 균등 분포 보장)
         function getRandomSamples(arr, count) {
             if (arr.length <= count) {
                 return [...arr];
             }
             
-            const shuffled = [...arr].sort(() => Math.random() - 0.5);
+            const shuffled = [...arr];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
             return shuffled.slice(0, count);
         }
 
@@ -485,18 +1122,34 @@
             const sourceClean = source.replace(/\s+/g, '_');
 
             const docNum = docid.replace(/\D/g, '');
-            // 각 요소를 하이픈으로 연결
-            const filename = `${docidClean}-${authorClean}-${titleClean}-${sourceClean}.txt`;
+            // 각 요소를 하이픈으로 연결 (.txt 확장자 제거)
+            const filename = `${docidClean}-${authorClean}-${titleClean}-${sourceClean}`;
             document.getElementById('filename').value = filename;
-            document.getElementById('originalid').value = `${docNum}_${authorClean}_${titleClean}_${sourceClean}.txt`;
+            document.getElementById('originalid').value = `${docNum}_${authorClean}_${titleClean}_${sourceClean}`;
         }
 
         // JSON 초기화
-        function initializeJson() {
+        async function initializeJson() {
             const filename = document.getElementById('filename').value.trim();
             if (!filename) {
                 alert('파일명을 먼저 입력하거나 자동 생성해주세요.');
                 return;
+            }
+
+            const jsonFilename = filename.replace(/\.txt$/i, '').replace(/\.json$/i, '') + '.json';
+            
+            // 서버에 파일 존재 여부 확인
+            try {
+                const checkResponse = await fetch(`sampling.php?action=check_exists&filename=${encodeURIComponent(jsonFilename)}`);
+                const checkResult = await checkResponse.json();
+                
+                if (checkResult.success && checkResult.data.exists) {
+                    if (!confirm(`"${jsonFilename}" 파일이 이미 존재합니다. 덮어쓰시겠습니까?`)) {
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('파일 존재 확인 실패:', error);
             }
 
             const now = new Date().toISOString();
@@ -519,8 +1172,34 @@
             };
 
             document.getElementById('segmentIdx').value = '0';
+            
+            // 서버에 즉시 저장
+            try {
+                const response = await fetch('sampling.php?action=save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: jsonFilename,
+                        content: currentJson
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentServerFilename = result.data.filename;
+                    hasUnsavedChanges = false;
+                    alert(`새 JSON 파일이 생성되었습니다: ${result.data.filename}`);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('서버 저장 실패: ' + error.message + '\n로컬에만 저장됩니다.');
+                hasUnsavedChanges = true;
+            }
+            
             updateJsonDisplay();
             updateSegmentInfo();
+            updateCurrentFileDisplay();
             saveToLocalStorage();
         }
 
@@ -573,6 +1252,7 @@
             updateJsonDisplay();
             updateSegmentInfo();
             saveToLocalStorage();
+            markAsChanged();
 
             alert(`세그먼트 ${segment.idx} 저장 완료!`);
         }
@@ -615,6 +1295,7 @@
             updateJsonDisplay();
             updateSegmentInfo();
             saveToLocalStorage();
+            markAsChanged();
         }
 
         // 특정 idx 세그먼트 삭제
@@ -652,17 +1333,23 @@
             updateJsonDisplay();
             updateSegmentInfo();
             saveToLocalStorage();
+            markAsChanged();
             
             alert(`idx ${targetIdx} 세그먼트가 삭제되었습니다.`);
         }
 
         // 전체 초기화
         function resetAll() {
-            if (!confirm('모든 데이터를 초기화하시겠습니까? 저장되지 않은 데이터는 사라집니다.')) {
+            if (hasUnsavedChanges && !confirm('저장되지 않은 변경사항이 있습니다. 모든 데이터를 초기화하시겠습니까?')) {
+                return;
+            }
+            if (!hasUnsavedChanges && !confirm('모든 데이터를 초기화하시겠습니까?')) {
                 return;
             }
 
             currentJson = null;
+            currentServerFilename = null;
+            hasUnsavedChanges = false;
 
             // 입력 필드 초기화
             document.getElementById('segmentIdx').value = '0';
@@ -679,6 +1366,7 @@
             
             document.getElementById('jsonOutput').textContent = 'JSON이 초기화되지 않았습니다. "새 JSON 초기화" 버튼을 눌러주세요.';
             updateSegmentInfo();
+            updateCurrentFileDisplay();
             
             localStorage.removeItem('samplingData');
         }
@@ -729,27 +1417,6 @@
                 document.body.removeChild(textarea);
                 alert('JSON이 클립보드에 복사되었습니다!');
             });
-        }
-
-        // JSON 다운로드
-        function downloadJson() {
-            if (!currentJson) {
-                alert('다운로드할 JSON이 없습니다.');
-                return;
-            }
-
-            const filename = Object.keys(currentJson)[0].replace('.txt', '.json');
-            const jsonText = JSON.stringify(currentJson, null, 2);
-            const blob = new Blob([jsonText], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
     </script>
 </body>

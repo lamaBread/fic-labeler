@@ -8,11 +8,15 @@ services:
     volumes:
       - ./html:/var/www/html
       - ./data:/var/www/html/data
+      - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     env_file:
       - .env
     environment:
       - TZ=${TZ:-Asia/Seoul}
       - ADMIN_KEY=${ADMIN_KEY}
+      # CLOVA OCR API 설정
+      - CLOVA_OCR_INVOKE_URL=${CLOVA_OCR_INVOKE_URL}
+      - CLOVA_OCR_SECRET_KEY=${CLOVA_OCR_SECRET_KEY}
     command: >
       bash -c "
         apt-get update && apt-get install -y libzip-dev &&

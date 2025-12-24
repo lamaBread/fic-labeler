@@ -1,0 +1,210 @@
+{
+    "R_063-공지영-고등어-웅진출판(초판64쇄,_1996년_2월_18일)": {
+        "metadata": {
+            "docid": "R_063",
+            "title": "고등어",
+            "author": "공지영",
+            "source": "웅진출판(초판64쇄, 1996년 2월 18일)",
+            "originalid": "063_공지영_고등어_웅진출판(초판64쇄,_1996년_2월_18일)",
+            "numwords": 48475,
+            "numchars": 185036,
+            "processed_date": "2025-12-24T12:44:07.545Z",
+            "ocr_pages": [
+                16,
+                38,
+                60,
+                73,
+                80,
+                92,
+                114,
+                122,
+                159,
+                176,
+                179,
+                185,
+                221,
+                231,
+                267,
+                273
+            ],
+            "ocr_sampling_method": "manual",
+            "ocr_sample_count": 16,
+            "page_range": {
+                "start": 7,
+                "end": 283,
+                "total": 277
+            },
+            "ocr_num_strata": 8,
+            "pages_calculated_date": "2025-12-24T14:53:36.223Z",
+            "lines_per_page": 24,
+            "ocr_analyzed_date": "2025-12-24T17:17:49.224Z",
+            "sampling_method": "underwood_proportional",
+            "chars_per_page": {
+                "mean": 668,
+                "std": 172.6,
+                "ci_95": [
+                    576,
+                    760
+                ],
+                "relative_error": "13.8%"
+            },
+            "words_per_page": {
+                "mean": 175,
+                "std": 42.8,
+                "ci_95": [
+                    152,
+                    198
+                ],
+                "relative_error": "13.0%"
+            },
+            "total_chunks": 370,
+            "chunk_size": 500,
+            "sampling_positions": [
+                {
+                    "idx": 0,
+                    "chunkIdx": 0,
+                    "relativePos": 0,
+                    "page": 7,
+                    "line": 1,
+                    "isFrame": true
+                },
+                {
+                    "idx": 1,
+                    "chunkIdx": 1,
+                    "relativePos": 0.0027,
+                    "page": 7,
+                    "line": 19,
+                    "isFrame": true
+                },
+                {
+                    "idx": 2,
+                    "chunkIdx": 22,
+                    "relativePos": 0.0596,
+                    "page": 23,
+                    "line": 12,
+                    "isFrame": false
+                },
+                {
+                    "idx": 3,
+                    "chunkIdx": 141,
+                    "relativePos": 0.3821,
+                    "page": 112,
+                    "line": 14,
+                    "isFrame": false
+                },
+                {
+                    "idx": 4,
+                    "chunkIdx": 151,
+                    "relativePos": 0.4092,
+                    "page": 120,
+                    "line": 2,
+                    "isFrame": false
+                },
+                {
+                    "idx": 5,
+                    "chunkIdx": 156,
+                    "relativePos": 0.4228,
+                    "page": 123,
+                    "line": 19,
+                    "isFrame": false
+                },
+                {
+                    "idx": 6,
+                    "chunkIdx": 180,
+                    "relativePos": 0.4878,
+                    "page": 141,
+                    "line": 19,
+                    "isFrame": false
+                },
+                {
+                    "idx": 7,
+                    "chunkIdx": 193,
+                    "relativePos": 0.523,
+                    "page": 151,
+                    "line": 12,
+                    "isFrame": false
+                },
+                {
+                    "idx": 8,
+                    "chunkIdx": 201,
+                    "relativePos": 0.5447,
+                    "page": 157,
+                    "line": 12,
+                    "isFrame": false
+                },
+                {
+                    "idx": 9,
+                    "chunkIdx": 242,
+                    "relativePos": 0.6558,
+                    "page": 188,
+                    "line": 4,
+                    "isFrame": false
+                },
+                {
+                    "idx": 10,
+                    "chunkIdx": 271,
+                    "relativePos": 0.7344,
+                    "page": 209,
+                    "line": 21,
+                    "isFrame": false
+                },
+                {
+                    "idx": 11,
+                    "chunkIdx": 291,
+                    "relativePos": 0.7886,
+                    "page": 224,
+                    "line": 21,
+                    "isFrame": false
+                },
+                {
+                    "idx": 12,
+                    "chunkIdx": 295,
+                    "relativePos": 0.7995,
+                    "page": 227,
+                    "line": 20,
+                    "isFrame": false
+                },
+                {
+                    "idx": 13,
+                    "chunkIdx": 300,
+                    "relativePos": 0.813,
+                    "page": 231,
+                    "line": 14,
+                    "isFrame": false
+                },
+                {
+                    "idx": 14,
+                    "chunkIdx": 368,
+                    "relativePos": 0.9973,
+                    "page": 282,
+                    "line": 12,
+                    "isFrame": true
+                },
+                {
+                    "idx": 15,
+                    "chunkIdx": 369,
+                    "relativePos": 1,
+                    "page": 283,
+                    "line": 6,
+                    "isFrame": true
+                }
+            ],
+            "sampling_date": "2025-12-24T17:19:04.277Z"
+        },
+        "chunkct": 1,
+        "segments": [
+            {
+                "idx": 0,
+                "text": " 그 전화가 걸려온 날 오후 명우는 부천에서 돌아오고 있었다. 딸아이 명지와 하루를 놀아 주고 오는 길이었다. 아이에게 약간 열이 있었기 떄문에 그는 지난 달 아이와 헤어지면서 약속했던 대로 동물원에는 갈 수가 없었고 그래서 대신 백화점에 가서 풍선과 스파게티만을 사주고 이별을 했던 것이었다. 그랬기 때문에 여느 때 아이를 보러 갔던 날과는 달리 그는 좀 일찍 집으로 돌아오고 있었다.\n 아주 흐린 날씨였다. 무거운 회색빛 하늘이 건물 뒤편마다 축축 늘어져 있었고 자세히 보면 온 세상에 흐뭇하게 안개가 낀 듯도 했다. 바람이 불 때마다 아직 나뭇가지에 붙어 있던 나무 이파리들은 잠시 두둥실 허공에서 춤을 추는 듯도 보였다.\n 네거리에서 노란 신호등이 들어오자 그는 잠시 망설이다가 브레이크를 지그시 밟았다. 평소 같았다면 이런 경고등 쯤 무시해 버리고 일직선으로 달려갔을 그였지만 오늘은 왠지 그러고 싶지 않았다. 좀 쉬었다가 가도 좋지 않을까, 그런 생각이 들었던 것이다.",
+                "word_count": 127,
+                "char_count": 492,
+                "complete": false,
+                "narratedtime": null,
+                "ellipsistime": 0,
+                "subjectivetime": 0,
+                "ellipsisphrase": "",
+                "subjectivephrase": ""
+            }
+        ]
+    }
+}
