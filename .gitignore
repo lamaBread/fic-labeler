@@ -9,6 +9,10 @@ data/master_passages.json
 data/users.json
 data/labelers/*.json
 
+# 샘플링 이미지 (폴더는 유지, 이미지 파일만 제외)
+data/sampling_images/**/*
+!data/sampling_images/**/.gitkeep
+
 # 민감한 설정 (관리자 키가 포함된 config.php는 별도 관리 권장)
 # html/config.php
 
